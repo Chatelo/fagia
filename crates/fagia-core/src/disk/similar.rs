@@ -289,12 +289,21 @@ fn decode_small(path: &Path) -> Option<(image::DynamicImage, u32, u32)> {
                 image::DynamicImage::ImageLuma8(image::GrayImage::from_raw(
                     w,
                     h,
-                    pixels.chunks_exact(4).map(|p| 255 - p[3]).collect(),
+                    pixels
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .map(|p| 255 - p[3])
+                        .collect(),
                 )?)
             }
-            jpeg_decoder::PixelFormat::L16 => image::DynamicImage::ImageLuma8(
-                image::GrayImage::from_raw(w, h, pixels.chunks_exact(2).map(|p| p[0]).collect())?,
-            ),
+            jpeg_decoder::PixelFormat::L16 => {
+                image::DynamicImage::ImageLuma8(image::GrayImage::from_raw(
+                    w,
+                    h,
+                    pixels.as_chunks::<2>().0.iter().map(|p| p[0]).collect(),
+                )?)
+            }
         };
         return Some((img, u32::from(full.width), u32::from(full.height)));
     }
