@@ -1,0 +1,478 @@
+{
+  "$defs": {
+    "Container": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "memory": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "memory_limit": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "memory",
+        "memory_limit"
+      ],
+      "type": "object"
+    },
+    "GroupOut": {
+      "properties": {
+        "age_secs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cwd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dev_suspect": {
+          "type": "boolean"
+        },
+        "display": {
+          "type": "string"
+        },
+        "fair": {
+          "description": "Fair share (PSS); resident for members that could not be measured.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "forgotten": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fully_measured": {
+          "type": "boolean"
+        },
+        "leak": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LeakOut"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "members": {
+          "items": {
+            "$ref": "#/$defs/MemberOut"
+          },
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "processes": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "resident": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "rule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "swap": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "system": {
+          "type": "boolean"
+        },
+        "trend": {
+          "items": {
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "uid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unique": {
+          "description": "Memory only this app holds: roughly what quitting it frees.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unsaved_work": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "display",
+        "uid",
+        "processes",
+        "fair",
+        "unique",
+        "resident",
+        "swap",
+        "fully_measured",
+        "age_secs",
+        "dev_suspect",
+        "system",
+        "unsaved_work",
+        "flags",
+        "trend",
+        "members"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "LeakOut": {
+      "properties": {
+        "end": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "fit": {
+          "format": "double",
+          "type": "number"
+        },
+        "mib_per_min": {
+          "format": "double",
+          "type": "number"
+        },
+        "start": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "window_secs": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mib_per_min",
+        "start",
+        "end",
+        "window_secs",
+        "fit"
+      ],
+      "type": "object"
+    },
+    "MemberOut": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "fair": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "measure": {
+          "description": "`pss` or `rss` (fair share not readable, usually another user's).",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "ppid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resident": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "started_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "swap": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "unique": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "pid",
+        "ppid",
+        "name",
+        "command",
+        "fair",
+        "resident",
+        "started_at",
+        "measure"
+      ],
+      "type": "object"
+    },
+    "ShmOut": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "used": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "used",
+        "total"
+      ],
+      "type": "object"
+    },
+    "SystemMemOut": {
+      "properties": {
+        "available": {
+          "description": "What programs can still get without swapping: the number to watch.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "file_cache": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "shared": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swap_in_rate": {
+          "description": "Pages per second.",
+          "format": "double",
+          "type": "number"
+        },
+        "swap_out_rate": {
+          "format": "double",
+          "type": "number"
+        },
+        "swap_total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swap_used": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "used_by_programs": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "zram": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Zram"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "total",
+        "available",
+        "used_by_programs",
+        "file_cache",
+        "shared",
+        "swap_total",
+        "swap_used",
+        "swap_in_rate",
+        "swap_out_rate"
+      ],
+      "type": "object"
+    },
+    "Zram": {
+      "properties": {
+        "compressed": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "original": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "used": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "original",
+        "compressed",
+        "used"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "containers": {
+      "items": {
+        "$ref": "#/$defs/Container"
+      },
+      "type": "array"
+    },
+    "groups": {
+      "items": {
+        "$ref": "#/$defs/GroupOut"
+      },
+      "type": "array"
+    },
+    "processes": {
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "shm": {
+      "items": {
+        "$ref": "#/$defs/ShmOut"
+      },
+      "type": "array"
+    },
+    "system": {
+      "$ref": "#/$defs/SystemMemOut"
+    },
+    "unmeasured": {
+      "description": "Processes shown at resident size because fair share was unreadable.",
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "watched_secs": {
+      "format": "double",
+      "type": [
+        "number",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "system",
+    "processes",
+    "unmeasured",
+    "groups",
+    "shm",
+    "containers"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

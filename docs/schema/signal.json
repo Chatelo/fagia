@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "ProcKey": {
+      "description": "Identifies one process instance. The start time guards against a PID\nbeing reused between confirmation and signal.",
+      "properties": {
+        "pid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start_ticks": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pid",
+        "start_ticks"
+      ],
+      "type": "object"
+    },
+    "SignalKind": {
+      "enum": [
+        "quit",
+        "force-kill",
+        "pause",
+        "resume"
+      ],
+      "type": "string"
+    },
+    "SignalPlan": {
+      "properties": {
+        "group": {
+          "type": "string"
+        },
+        "targets": {
+          "items": {
+            "$ref": "#/$defs/SignalTarget"
+          },
+          "type": "array"
+        },
+        "unsaved_work": {
+          "description": "Editors, browsers and office apps may hold unsaved work.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "group",
+        "targets",
+        "unsaved_work"
+      ],
+      "type": "object"
+    },
+    "SignalResult": {
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ok": {
+          "type": "boolean"
+        },
+        "pid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pid",
+        "ok"
+      ],
+      "type": "object"
+    },
+    "SignalTarget": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "fair": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "key": {
+          "$ref": "#/$defs/ProcKey"
+        },
+        "name": {
+          "type": "string"
+        },
+        "refusal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "key",
+        "name",
+        "command",
+        "fair"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "action": {
+      "$ref": "#/$defs/SignalKind"
+    },
+    "command": {
+      "type": "string"
+    },
+    "plan": {
+      "$ref": "#/$defs/SignalPlan"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/SignalResult"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "still_running": {
+      "description": "PIDs still running after the grace period.",
+      "items": {
+        "format": "uint32",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "plan",
+    "action",
+    "results",
+    "still_running"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

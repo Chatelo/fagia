@@ -1,0 +1,443 @@
+# Built-in rules, embedded in the binary. User rules in config.toml
+# override these by id; `enabled = false` turns one off.
+#
+# Evidence: `require_sibling` and `require_inside` each list glob patterns;
+# at least one entry of each non-empty list must be present. A name match
+# without its evidence is never a finding.
+#
+# Path variables: {home} {cache_dir} {data_dir} {config_dir} {state_dir}
+# {cargo_home}. Auto-selection in `clean` needs regenerable = true and
+# risk = "low".
+
+# ---------------------------------------------------------------- builds
+
+[[rule]]
+id = "rust-target"
+category = "Rust build"
+kind = "dir"
+names = ["target"]
+require_sibling = ["Cargo.toml"]
+regenerable = true
+regenerate = "cargo build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "node-modules"
+category = "Node deps"
+kind = "dir"
+names = ["node_modules"]
+require_sibling = ["package.json"]
+regenerable = true
+regenerate = "npm install"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "python-venv"
+category = "Python venv"
+kind = "dir"
+names = [".venv", "venv", "env"]
+require_inside = ["pyvenv.cfg"]
+regenerable = true
+regenerate = "python -m venv"
+# A venv may hold packages that are not in any requirements file.
+risk = "medium"
+priority = 10
+
+[[rule]]
+id = "python-cache"
+category = "Python cache"
+kind = "dir"
+names = ["__pycache__"]
+require_inside = ["*.pyc"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "test-caches"
+category = "Test caches"
+kind = "dir"
+names = [".pytest_cache", ".mypy_cache", ".ruff_cache"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "nextjs-build"
+category = "Next.js build"
+kind = "dir"
+names = [".next"]
+require_sibling = ["next.config.*"]
+regenerable = true
+regenerate = "next build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "js-framework-cache"
+category = "JS build cache"
+kind = "dir"
+names = [".turbo", ".parcel-cache", ".svelte-kit", ".nuxt", ".angular"]
+require_sibling = ["package.json", "angular.json"]
+regenerable = true
+regenerate = "project build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "gradle-build"
+category = "Gradle"
+kind = "dir"
+names = [".gradle", "build"]
+require_sibling = ["build.gradle*", "settings.gradle*"]
+regenerable = true
+regenerate = "gradle build"
+risk = "low"
+priority = 20
+
+[[rule]]
+id = "flutter-build"
+category = "Flutter"
+kind = "dir"
+names = ["build", ".dart_tool"]
+require_sibling = ["pubspec.yaml"]
+regenerable = true
+regenerate = "flutter build"
+risk = "low"
+priority = 20
+
+[[rule]]
+id = "cmake-build"
+category = "CMake build"
+kind = "dir"
+names = ["cmake-build-debug", "cmake-build-release", "cmake-build-relwithdebinfo"]
+require_sibling = ["CMakeLists.txt"]
+regenerable = true
+regenerate = "cmake --build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "zig-build"
+category = "Zig build"
+kind = "dir"
+names = ["zig-cache", ".zig-cache", "zig-out"]
+require_sibling = ["build.zig"]
+regenerable = true
+regenerate = "zig build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "haskell-build"
+category = "Haskell build"
+kind = "dir"
+names = ["dist-newstyle", ".stack-work"]
+require_sibling = ["*.cabal", "cabal.project", "stack.yaml"]
+regenerable = true
+regenerate = "cabal build / stack build"
+risk = "low"
+priority = 10
+
+[[rule]]
+id = "generic-build"
+category = "Generic build"
+kind = "dir"
+names = ["dist", "build", "out"]
+require_sibling = [
+  "package.json", "vite.config.*", "webpack.config.*", "tsconfig.json",
+  "CMakeLists.txt", "Makefile", "meson.build", "setup.py", "pyproject.toml",
+]
+regenerable = true
+regenerate = "project build"
+# The name is common and the markers are broad, so never auto-select.
+risk = "medium"
+priority = 0
+
+# ---------------------------------------------------------------- caches
+
+[[rule]]
+id = "cargo-cache"
+category = "Cargo cache"
+kind = "path"
+paths = ["{cargo_home}/registry", "{cargo_home}/git"]
+regenerable = true
+regenerate = "cargo fetch"
+risk = "low"
+
+[[rule]]
+id = "npm-cache"
+category = "npm cache"
+kind = "path"
+paths = ["{home}/.npm"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+
+[[rule]]
+id = "yarn-cache"
+category = "Yarn cache"
+kind = "path"
+paths = ["{cache_dir}/yarn"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+
+[[rule]]
+id = "pnpm-store"
+category = "pnpm store"
+kind = "path"
+paths = ["{data_dir}/pnpm/store"]
+regenerable = true
+regenerate = "pnpm install"
+# Projects hard-link into the store; little is freed while they exist.
+risk = "medium"
+
+[[rule]]
+id = "pip-cache"
+category = "pip cache"
+kind = "path"
+paths = ["{cache_dir}/pip"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+
+[[rule]]
+id = "go-build-cache"
+category = "Go build cache"
+kind = "path"
+paths = ["{cache_dir}/go-build"]
+regenerable = true
+regenerate = "automatic"
+risk = "low"
+
+[[rule]]
+id = "gradle-cache"
+category = "Gradle cache"
+kind = "path"
+paths = ["{home}/.gradle/caches"]
+regenerable = true
+regenerate = "gradle build"
+risk = "low"
+
+[[rule]]
+id = "maven-repo"
+category = "Maven repository"
+kind = "path"
+paths = ["{home}/.m2/repository"]
+regenerable = true
+regenerate = "mvn dependency:resolve"
+risk = "medium"
+
+[[rule]]
+id = "huggingface-cache"
+category = "AI models"
+kind = "path"
+paths = ["{cache_dir}/huggingface"]
+regenerable = true
+regenerate = "re-download"
+risk = "medium"
+
+[[rule]]
+id = "ai-model-files"
+category = "AI models"
+kind = "file"
+extensions = ["gguf", "safetensors"]
+regenerable = true
+regenerate = "re-download"
+risk = "medium"
+
+# ---------------------------------------------------------------- other
+
+[[rule]]
+id = "logs"
+category = "Logs"
+kind = "file"
+extensions = ["log"]
+regenerable = false
+risk = "medium"
+
+[[rule]]
+id = "system-logs"
+category = "Logs"
+kind = "path"
+paths = ["/var/log"]
+regenerable = false
+risk = "high"
+
+[[rule]]
+id = "trash"
+category = "Trash"
+kind = "path"
+paths = ["{data_dir}/Trash"]
+regenerable = false
+risk = "low"
+
+[[rule]]
+id = "archives"
+category = "Archives"
+kind = "file"
+extensions = [
+  "zip", "tar", "tar.gz", "tgz", "tar.xz", "txz", "tar.bz2", "tar.zst", "7z",
+  "rar", "iso", "deb", "rpm", "appimage", "dmg",
+]
+regenerable = false
+regenerate = "re-download"
+risk = "medium"
+
+# ---------------------------------------------------------------- memory
+#
+# `system = true`: never offered for kill or pause.
+# `boundary = true`: grouping by parent tree stops below these (terminals,
+#   shells, multiplexers), so each program started from a shell is its own
+#   app instead of everything merging into "terminal".
+# `unsaved_work = true`: warn before quitting.
+# `split_by_cwd = true`: one group per working directory (dev servers).
+# `per_app = true`: one group per executable (firefox, slack), with `group`
+#   shown as the category.
+
+[[mem_rule]]
+id = "system-core"
+group = "System"
+exe = [
+  "systemd", "init", "dbus-daemon", "dbus-broker", "dbus-broker-launch", "polkitd",
+  "NetworkManager", "wpa_supplicant", "udisksd", "upowerd", "accounts-daemon",
+  "systemd-journald", "systemd-logind", "systemd-udevd", "systemd-resolved",
+  "systemd-oomd", "systemd-timesyncd", "rtkit-daemon", "cron", "crond",
+]
+system = true
+
+[[mem_rule]]
+id = "display-server"
+group = "Display server"
+exe = ["Xorg", "Xwayland", "X", "gnome-shell", "kwin_wayland", "kwin_x11", "mutter", "sway", "Hyprland", "weston", "labwc", "niri", "river", "wayfire"]
+system = true
+
+[[mem_rule]]
+id = "session-manager"
+group = "Session"
+exe = [
+  "gnome-session-binary", "gnome-session", "ksmserver", "plasmashell", "lxsession",
+  "xfce4-session", "gdm", "gdm-wayland-session", "gdm-x-session", "sddm",
+  "lightdm", "login", "pipewire", "pipewire-pulse", "wireplumber", "pulseaudio",
+]
+system = true
+
+[[mem_rule]]
+id = "sshd"
+group = "SSH server"
+exe = ["sshd", "sshd-session"]
+system = true
+boundary = true
+
+[[mem_rule]]
+id = "terminals"
+group = "Terminal"
+exe = [
+  "gnome-terminal-server", "konsole", "kitty", "alacritty", "wezterm-gui", "wezterm",
+  "foot", "xterm", "tilix", "terminator", "ghostty", "xfce4-terminal", "kgx",
+  "ptyxis", "ptyxis-agent", "tmux: server", "tmux", "screen", "zellij",
+]
+boundary = true
+
+[[mem_rule]]
+id = "shells"
+group = "Shell"
+exe = ["bash", "zsh", "fish", "sh", "dash", "nu", "elvish", "xonsh", "sudo", "doas"]
+boundary = true
+
+[[mem_rule]]
+id = "rust-analyzer"
+group = "rust-analyzer"
+exe = ["rust-analyzer"]
+dev_suspect = true
+reason = "indexes the whole workspace"
+
+[[mem_rule]]
+id = "rust-build"
+group = "cargo / rustc"
+exe = ["cargo", "rustc", "cargo-watch", "bacon"]
+dev_suspect = true
+reason = "parallel compile jobs"
+
+[[mem_rule]]
+id = "node-dev"
+group = "Node"
+exe = ["node", "npm", "npx", "pnpm", "yarn", "bun", "deno", "vite", "next-server", "esbuild", "tsserver"]
+dev_suspect = true
+split_by_cwd = true
+reason = "dev servers left running, slow leaks"
+
+[[mem_rule]]
+id = "browsers"
+per_app = true
+group = "Browser"
+exe = [
+  "firefox", "firefox-bin", "firefox-esr", "chrome", "google-chrome", "chromium",
+  "chromium-browser", "brave", "brave-browser", "msedge", "vivaldi-bin", "opera", "librewolf",
+]
+dev_suspect = true
+unsaved_work = true
+reason = "tabs and extensions"
+
+[[mem_rule]]
+id = "electron-apps"
+per_app = true
+group = "Electron app"
+exe = ["code", "code-oss", "codium", "cursor", "slack", "discord", "Discord", "obsidian", "teams", "signal-desktop", "zed", "zeditor"]
+dev_suspect = true
+unsaved_work = true
+reason = "Electron apps hold a browser engine each"
+
+[[mem_rule]]
+id = "docker"
+group = "Docker"
+exe = ["dockerd", "containerd", "containerd-shim", "containerd-shim-runc-v2", "docker-proxy", "podman", "conmon"]
+dev_suspect = true
+reason = "memory held per container"
+
+[[mem_rule]]
+id = "language-servers"
+per_app = true
+group = "Language servers"
+exe = [
+  "gopls", "pyright", "pyright-langserver", "pylsp", "basedpyright", "typescript-language-server",
+  "clangd", "jdtls", "lua-language-server", "zls", "haskell-language-server", "elixir-ls",
+]
+dev_suspect = true
+reason = "one per open project"
+
+[[mem_rule]]
+id = "local-ai"
+per_app = true
+group = "Local AI models"
+exe = ["ollama", "llama-server", "llama-cli", "lmstudio", "LM Studio"]
+dev_suspect = true
+reason = "whole model loaded in RAM"
+
+[[mem_rule]]
+id = "jupyter"
+group = "Jupyter"
+cmdline = ["ipykernel_launcher", "jupyter-lab", "jupyter-notebook"]
+dev_suspect = true
+split_by_cwd = true
+reason = "kernels keep data in memory"
+
+[[mem_rule]]
+id = "databases"
+per_app = true
+group = "Databases"
+exe = ["postgres", "mysqld", "mariadbd", "mongod", "redis-server", "clickhouse-server", "elasticsearch"]
+dev_suspect = true
+reason = "caches sized to available RAM"
+
+[[mem_rule]]
+id = "editors"
+per_app = true
+group = "Editors"
+exe = ["nvim", "vim", "emacs", "gedit", "gnome-text-editor", "kate", "idea", "pycharm", "clion", "webstorm", "goland", "rustrover", "soffice.bin", "libreoffice"]
+unsaved_work = true

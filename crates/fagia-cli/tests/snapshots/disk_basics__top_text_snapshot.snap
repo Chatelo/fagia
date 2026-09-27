@@ -1,0 +1,11 @@
+---
+source: crates/fagia-cli/tests/disk_basics.rs
+expression: paths
+---
+[
+    "PATH",
+    "~/data/b",
+    "~/data/a",
+    "~/data (files directly inside)",
+    "TOTAL ~/data",
+]

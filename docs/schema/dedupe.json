@@ -1,0 +1,269 @@
+{
+  "$defs": {
+    "CopyKind": {
+      "enum": [
+        "file",
+        "folder"
+      ],
+      "type": "string"
+    },
+    "DedupeMode": {
+      "oneOf": [
+        {
+          "const": "trash",
+          "description": "Move extra copies to the trash (restorable with `fagia undo`).",
+          "type": "string"
+        },
+        {
+          "const": "link",
+          "description": "Replace extra copies with hard links to the kept copy: space is\nfreed and every path keeps working.",
+          "type": "string"
+        }
+      ]
+    },
+    "DedupeResult": {
+      "properties": {
+        "estimate": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "freed_measured": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "interrupted": {
+          "type": "boolean"
+        },
+        "mode": {
+          "$ref": "#/$defs/DedupeMode"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/ItemResult"
+          },
+          "type": "array"
+        },
+        "run": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run",
+        "mode",
+        "results",
+        "estimate",
+        "freed_measured",
+        "interrupted"
+      ],
+      "type": "object"
+    },
+    "DedupeSetOut": {
+      "properties": {
+        "files": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "keep": {
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/CopyKind"
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "remove": {
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "items": {
+            "$ref": "#/$defs/SkippedCopy"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "files",
+        "size",
+        "real",
+        "keep",
+        "remove",
+        "skipped"
+      ],
+      "type": "object"
+    },
+    "ItemOutcome": {
+      "enum": [
+        "done",
+        "skipped",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "ItemResult": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/ItemOutcome"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trash_path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "outcome",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "SkippedCopy": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "reason"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "mode": {
+      "$ref": "#/$defs/DedupeMode"
+    },
+    "path": {
+      "type": "string"
+    },
+    "path_bytes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reclaimable": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "removals": {
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DedupeResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sets": {
+      "items": {
+        "$ref": "#/$defs/DedupeSetOut"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "path",
+    "mode",
+    "dry_run",
+    "reclaimable",
+    "removals",
+    "sets"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

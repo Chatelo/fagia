@@ -1,0 +1,11 @@
+# Safety rule: only the action gate in
+# fagia-core/src/actions/ may remove files or signal processes.
+disallowed-methods = [
+  { path = "std::fs::remove_file", reason = "route deletes through fagia_core::actions" },
+  { path = "std::fs::remove_dir", reason = "route deletes through fagia_core::actions" },
+  { path = "std::fs::remove_dir_all", reason = "route deletes through fagia_core::actions" },
+  { path = "rustix::process::kill_process", reason = "route signals through fagia_core::actions" },
+  { path = "rustix::process::kill_process_group", reason = "route signals through fagia_core::actions" },
+  { path = "rustix::process::pidfd_send_signal", reason = "only the Linux platform layer sends signals, on behalf of fagia_core::actions" },
+  { path = "fagia_core::platform::Platform::signal", reason = "route signals through fagia_core::actions" },
+]

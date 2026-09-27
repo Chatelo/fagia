@@ -1,0 +1,438 @@
+{
+  "$defs": {
+    "DeletedOpenOut": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "process": {
+          "type": "string"
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "real",
+        "pid",
+        "process"
+      ],
+      "type": "object"
+    },
+    "DiskSummary": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "fs_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reserved": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stats": {
+          "$ref": "#/$defs/FsStats"
+        }
+      },
+      "required": [
+        "path",
+        "stats",
+        "reserved"
+      ],
+      "type": "object"
+    },
+    "EntryKind": {
+      "oneOf": [
+        {
+          "enum": [
+            "file",
+            "dir"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "provider",
+          "description": "Measured by a provider (for example Docker images); not a path on\ndisk and never cleaned by deleting files.",
+          "type": "string"
+        }
+      ]
+    },
+    "FindingOut": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "apparent": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "auto_select": {
+          "description": "Preselected by `clean` (regenerable and low risk).",
+          "type": "boolean"
+        },
+        "category": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "files": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/EntryKind"
+        },
+        "modified": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reclaimable": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "regenerable": {
+          "type": "boolean"
+        },
+        "regenerate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "stale_days": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "category",
+        "rule_id",
+        "evidence",
+        "regenerable",
+        "risk",
+        "real",
+        "apparent",
+        "reclaimable",
+        "files",
+        "modified",
+        "auto_select"
+      ],
+      "type": "object"
+    },
+    "FsStats": {
+      "properties": {
+        "available": {
+          "description": "Free space an unprivileged user can use.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "free": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "free",
+        "available"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "MemorySummary": {
+      "properties": {
+        "available": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swap_total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "swap_used": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "available",
+        "swap_total",
+        "swap_used"
+      ],
+      "type": "object"
+    },
+    "Risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "ScanInfo": {
+      "description": "Facts about the scan every disk report includes.",
+      "properties": {
+        "cancelled": {
+          "type": "boolean"
+        },
+        "elapsed_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_samples": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "errors": {
+          "description": "Entries that could not be read (permission errors).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "skipped": {
+          "description": "Mount points not entered.",
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "total_apparent": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "total_real",
+        "total_apparent",
+        "elapsed_ms",
+        "errors",
+        "error_samples",
+        "skipped",
+        "notes",
+        "warnings",
+        "cancelled"
+      ],
+      "type": "object"
+    },
+    "Unseen": {
+      "description": "Space `du` cannot see: why `df` and `du` disagree.",
+      "properties": {
+        "deleted_open": {
+          "items": {
+            "$ref": "#/$defs/DeletedOpenOut"
+          },
+          "type": "array"
+        },
+        "deleted_open_total": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reserved": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "snapshot_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "deleted_open",
+        "deleted_open_total",
+        "reserved"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "disk": {
+      "$ref": "#/$defs/DiskSummary"
+    },
+    "memory": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MemorySummary"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "scan": {
+      "$ref": "#/$defs/ScanInfo"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "suspects_total": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "top_suspects": {
+      "items": {
+        "$ref": "#/$defs/FindingOut"
+      },
+      "type": "array"
+    },
+    "unseen": {
+      "$ref": "#/$defs/Unseen"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "disk",
+    "scan",
+    "top_suspects",
+    "suspects_total",
+    "unseen"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

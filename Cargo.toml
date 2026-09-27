@@ -1,0 +1,16 @@
+[workspace]
+resolver = "3"
+members = ["crates/fagia-core", "crates/fagia-cli", "crates/fagia-tui"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/Chatelo/fagia"
+
+[workspace.lints.clippy]
+disallowed_methods = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

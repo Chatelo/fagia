@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "RuleCheck": {
+      "description": "Outcome of evaluating one rule against one path, for `rules test`.",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "boolean"
+        },
+        "priority": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "category",
+        "matched",
+        "reason",
+        "priority"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/RuleCheck"
+      },
+      "type": "array"
+    },
+    "command": {
+      "type": "string"
+    },
+    "path": {
+      "type": "string"
+    },
+    "path_bytes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "winner": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "path",
+    "checks"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

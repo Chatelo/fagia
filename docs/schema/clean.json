@@ -1,0 +1,332 @@
+{
+  "$defs": {
+    "CleanResult": {
+      "properties": {
+        "estimate": {
+          "description": "Sum of reclaimable bytes of the items acted on.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "freed_measured": {
+          "description": "Change in available space on the root's filesystem, measured.",
+          "format": "int64",
+          "type": "integer"
+        },
+        "interrupted": {
+          "type": "boolean"
+        },
+        "mode": {
+          "$ref": "#/$defs/Mode"
+        },
+        "results": {
+          "items": {
+            "$ref": "#/$defs/ItemResult"
+          },
+          "type": "array"
+        },
+        "run": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "run",
+        "mode",
+        "results",
+        "estimate",
+        "freed_measured",
+        "interrupted"
+      ],
+      "type": "object"
+    },
+    "EntryKind": {
+      "oneOf": [
+        {
+          "enum": [
+            "file",
+            "dir"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "provider",
+          "description": "Measured by a provider (for example Docker images); not a path on\ndisk and never cleaned by deleting files.",
+          "type": "string"
+        }
+      ]
+    },
+    "ItemOutcome": {
+      "enum": [
+        "done",
+        "skipped",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "ItemResult": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/ItemOutcome"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trash_path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "outcome",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "Mode": {
+      "oneOf": [
+        {
+          "const": "trash",
+          "description": "Move to the trash (default; reversible with `fagia undo`).",
+          "type": "string"
+        },
+        {
+          "const": "permanent",
+          "description": "Delete for good (`--permanent`, second confirmation).",
+          "type": "string"
+        }
+      ]
+    },
+    "PlanItemOut": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "apparent": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "auto_select": {
+          "description": "Preselected by `clean` (regenerable and low risk).",
+          "type": "boolean"
+        },
+        "category": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "files": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/EntryKind"
+        },
+        "measured": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "modified": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "reclaimable": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refusal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "regenerable": {
+          "type": "boolean"
+        },
+        "regenerate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "selected": {
+          "type": "boolean"
+        },
+        "stale_days": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "category",
+        "rule_id",
+        "evidence",
+        "regenerable",
+        "risk",
+        "real",
+        "apparent",
+        "reclaimable",
+        "files",
+        "modified",
+        "auto_select",
+        "measured",
+        "selected"
+      ],
+      "type": "object"
+    },
+    "Risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/PlanItemOut"
+      },
+      "type": "array"
+    },
+    "mode": {
+      "$ref": "#/$defs/Mode"
+    },
+    "path": {
+      "type": "string"
+    },
+    "path_bytes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "result": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CleanResult"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "selected_bytes": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "path",
+    "mode",
+    "dry_run",
+    "selected_bytes",
+    "items"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

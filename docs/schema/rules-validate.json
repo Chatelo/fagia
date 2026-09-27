@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "mem_rules": {
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "ok": {
+      "type": "boolean"
+    },
+    "problems": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "rules": {
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "ok",
+    "rules",
+    "mem_rules",
+    "problems"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

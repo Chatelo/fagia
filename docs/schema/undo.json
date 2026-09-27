@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "ItemOutcome": {
+      "enum": [
+        "done",
+        "skipped",
+        "failed"
+      ],
+      "type": "string"
+    },
+    "ItemResult": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "outcome": {
+          "$ref": "#/$defs/ItemOutcome"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "trash_path": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JsonPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "outcome",
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "RunSummary": {
+      "properties": {
+        "bytes": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "restorable": {
+          "description": "Trashed items not yet restored.",
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "run": {
+          "type": "string"
+        },
+        "time": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "run",
+        "time",
+        "items",
+        "bytes",
+        "restorable"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "dry_run": {
+      "type": "boolean"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/ItemResult"
+      },
+      "type": "array"
+    },
+    "run": {
+      "type": "string"
+    },
+    "runs": {
+      "items": {
+        "$ref": "#/$defs/RunSummary"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "run",
+    "dry_run",
+    "runs",
+    "results"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

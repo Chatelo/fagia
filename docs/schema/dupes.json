@@ -1,0 +1,313 @@
+{
+  "$defs": {
+    "DupeDirOut": {
+      "properties": {
+        "copies": {
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "files": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "real": {
+          "description": "Disk bytes of one copy.",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wasted": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "real",
+        "files",
+        "wasted",
+        "copies"
+      ],
+      "type": "object"
+    },
+    "DupeSetOut": {
+      "properties": {
+        "copies": {
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wasted": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size",
+        "wasted",
+        "copies"
+      ],
+      "type": "object"
+    },
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "MatchBy": {
+      "description": "How duplicates are recognised. Content is always compared byte for\nbyte (size, then head and tail, then a full hash).",
+      "oneOf": [
+        {
+          "const": "name-and-content",
+          "description": "Same content and the same name once copy markers are removed.",
+          "type": "string"
+        },
+        {
+          "const": "loose-name-and-content",
+          "description": "Same content and a loosely equal name (tags and punctuation ignored).",
+          "type": "string"
+        },
+        {
+          "const": "content",
+          "description": "Same content, whatever the names.",
+          "type": "string"
+        }
+      ]
+    },
+    "ScanInfo": {
+      "description": "Facts about the scan every disk report includes.",
+      "properties": {
+        "cancelled": {
+          "type": "boolean"
+        },
+        "elapsed_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_samples": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "errors": {
+          "description": "Entries that could not be read (permission errors).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "skipped": {
+          "description": "Mount points not entered.",
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "total_apparent": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "total_real",
+        "total_apparent",
+        "elapsed_ms",
+        "errors",
+        "error_samples",
+        "skipped",
+        "notes",
+        "warnings",
+        "cancelled"
+      ],
+      "type": "object"
+    },
+    "SimilarFile": {
+      "properties": {
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "size"
+      ],
+      "type": "object"
+    },
+    "SimilarGroup": {
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/SimilarFile"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/SimilarKind"
+        },
+        "note": {
+          "type": "string"
+        },
+        "similarity": {
+          "description": "0 to 1; the weakest match between the seed and a member.",
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "kind",
+        "similarity",
+        "note",
+        "files"
+      ],
+      "type": "object"
+    },
+    "SimilarKind": {
+      "enum": [
+        "text",
+        "image",
+        "media",
+        "content"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "folders": {
+      "description": "Identical folders (outermost only).",
+      "items": {
+        "$ref": "#/$defs/DupeDirOut"
+      },
+      "type": "array"
+    },
+    "match_by": {
+      "$ref": "#/$defs/MatchBy",
+      "description": "How names had to match; content always had to be identical."
+    },
+    "match_names": {
+      "description": "Copies had to share a name (ignoring copy markers) as well as content.",
+      "type": "boolean"
+    },
+    "min_size": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "notes": {
+      "description": "Analyses that could not run, and why.",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "scan": {
+      "$ref": "#/$defs/ScanInfo"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "sets": {
+      "description": "Identical files outside those folders.",
+      "items": {
+        "$ref": "#/$defs/DupeSetOut"
+      },
+      "type": "array"
+    },
+    "similar": {
+      "description": "Near-duplicates: reported, never removed automatically.",
+      "items": {
+        "$ref": "#/$defs/SimilarGroup"
+      },
+      "type": "array"
+    },
+    "total_wasted": {
+      "description": "Wasted by identical files and folders together.",
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "scan",
+    "min_size",
+    "match_by",
+    "match_names",
+    "total_wasted",
+    "folders",
+    "sets",
+    "similar",
+    "notes"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

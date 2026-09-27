@@ -1,0 +1,172 @@
+{
+  "$defs": {
+    "CategoryDelta": {
+      "properties": {
+        "after": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "before": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "category": {
+          "type": "string"
+        },
+        "delta": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "category",
+        "before",
+        "after",
+        "delta"
+      ],
+      "type": "object"
+    },
+    "Change": {
+      "enum": [
+        "grew",
+        "shrank",
+        "appeared",
+        "vanished"
+      ],
+      "type": "string"
+    },
+    "Diff": {
+      "properties": {
+        "after_taken_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "before_taken_at": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "categories": {
+          "items": {
+            "$ref": "#/$defs/CategoryDelta"
+          },
+          "type": "array"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/DiffEntry"
+          },
+          "type": "array"
+        },
+        "total_after": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_before": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_delta": {
+          "format": "int64",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "before_taken_at",
+        "after_taken_at",
+        "total_before",
+        "total_after",
+        "total_delta",
+        "categories",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "DiffEntry": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "after": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "before": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "change": {
+          "$ref": "#/$defs/Change"
+        },
+        "delta": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path",
+        "change",
+        "before",
+        "after",
+        "delta"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "diff": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Diff"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "path": {
+      "type": "string"
+    },
+    "path_bytes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "snapshots": {
+      "format": "uint",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "path",
+    "snapshots"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

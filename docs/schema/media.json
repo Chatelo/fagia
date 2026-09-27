@@ -1,0 +1,260 @@
+{
+  "$defs": {
+    "JsonPath": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "MediaFile": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "duration_secs": {
+          "format": "double",
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "modified": {
+          "format": "int64",
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "resolution": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sniffed": {
+          "description": "Detected from the file header rather than the extension.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "real",
+        "modified",
+        "sniffed"
+      ],
+      "type": "object"
+    },
+    "MediaFolder": {
+      "description": "JSON form of a path: `path` is always present (lossy when needed) and\n`path_bytes` carries the exact bytes, base64, when the path is not UTF-8.",
+      "properties": {
+        "count": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "real",
+        "count"
+      ],
+      "type": "object"
+    },
+    "MediaGroup": {
+      "properties": {
+        "count": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "folders": {
+          "items": {
+            "$ref": "#/$defs/MediaFolder"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/MediaKind"
+        },
+        "label": {
+          "type": "string"
+        },
+        "largest": {
+          "items": {
+            "$ref": "#/$defs/MediaFile"
+          },
+          "type": "array"
+        },
+        "real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "count",
+        "real",
+        "largest",
+        "folders"
+      ],
+      "type": "object"
+    },
+    "MediaKind": {
+      "enum": [
+        "video",
+        "audio",
+        "image",
+        "raw",
+        "design"
+      ],
+      "type": "string"
+    },
+    "ScanInfo": {
+      "description": "Facts about the scan every disk report includes.",
+      "properties": {
+        "cancelled": {
+          "type": "boolean"
+        },
+        "elapsed_ms": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "error_samples": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "errors": {
+          "description": "Entries that could not be read (permission errors).",
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "path_bytes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "skipped": {
+          "description": "Mount points not entered.",
+          "items": {
+            "$ref": "#/$defs/JsonPath"
+          },
+          "type": "array"
+        },
+        "total_apparent": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_real": {
+          "format": "uint64",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "total_real",
+        "total_apparent",
+        "elapsed_ms",
+        "errors",
+        "error_samples",
+        "skipped",
+        "notes",
+        "warnings",
+        "cancelled"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "groups": {
+      "items": {
+        "$ref": "#/$defs/MediaGroup"
+      },
+      "type": "array"
+    },
+    "scan": {
+      "$ref": "#/$defs/ScanInfo"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "total": {
+      "format": "uint64",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "scan",
+    "total",
+    "groups"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

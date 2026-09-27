@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "Origin": {
+      "enum": [
+        "builtin",
+        "user",
+        "overridden"
+      ],
+      "type": "string"
+    },
+    "Risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "type": "string"
+    },
+    "RuleKind": {
+      "enum": [
+        "dir",
+        "file",
+        "path"
+      ],
+      "type": "string"
+    },
+    "RuleOut": {
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "extensions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RuleKind"
+        },
+        "names": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "priority": {
+          "format": "int32",
+          "type": "integer"
+        },
+        "regenerable": {
+          "type": "boolean"
+        },
+        "regenerate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "require_inside": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "require_sibling": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "risk": {
+          "$ref": "#/$defs/Risk"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "kind",
+        "names",
+        "extensions",
+        "paths",
+        "require_sibling",
+        "require_inside",
+        "regenerable",
+        "risk",
+        "priority",
+        "enabled",
+        "origin"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "command": {
+      "type": "string"
+    },
+    "rules": {
+      "items": {
+        "$ref": "#/$defs/RuleOut"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "command",
+    "rules"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

@@ -1,0 +1,35 @@
+[package]
+name = "fagia-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+blake3 = "1.8.7"
+globset = "0.4.19"
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff"] }
+infer = "0.22.0"
+jpeg-decoder = "0.3.2"
+rayon = "1.12.0"
+regex = "1.13.1"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+rustix = { version = "1.1.5", features = ["fs", "param", "process", "system"] }
+schemars = "1.2.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
+toml = "1.1.6"
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+criterion = "0.8.2"
+proptest = "1.11.0"
+tempfile = "3.27.0"
+
+[[bench]]
+name = "walk"
+harness = false
