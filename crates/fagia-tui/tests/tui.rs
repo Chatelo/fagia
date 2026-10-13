@@ -29,6 +29,7 @@ fn fixture() -> Fx {
     w("code/api/target/debug/app", 2 << 20);
     w("code/web/package.json", 10);
     w("code/web/node_modules/x/index.js", 1 << 20);
+    w("code/api/.pytest_cache/v/cache/lastfailed", 10);
     w("Videos/trip.mp4", 3 << 20);
     Fx { _tmp: tmp, home }
 }
@@ -102,16 +103,21 @@ fn renders_while_scanning_then_shows_categories() {
     assert!(first.contains("Disk") && first.contains("RAM") && first.contains("History"));
     wait_ready(&mut a);
     let s = screen(&a);
-    for want in [
-        "Rust build",
-        "Node deps",
-        "Media",
-        "Big folders",
-        "3.0 MiB selected",
-        "Cargo.toml in parent",
-    ] {
+    for want in ["Test caches", "Media", "Big folders", "0 B selected"] {
         assert!(s.contains(want), "missing {want:?} in\n{s}");
     }
+    assert!(!s.contains("Rust build"));
+    assert!(!s.contains("Node deps"));
+    let DiskState::Ready(v) = &a.disk else {
+        panic!("scan did not finish");
+    };
+    assert!(v.selected.is_empty());
+    assert!(
+        v.findings
+            .iter()
+            .all(|f| { !f.path.ends_with("target") && !f.path.ends_with("node_modules") }),
+        "dependency/build trees leaked into cleanable findings"
+    );
 }
 
 #[test]
@@ -119,8 +125,21 @@ fn clean_goes_through_confirmation_and_gate() {
     let fx = fixture();
     let mut a = app(&fx);
     wait_ready(&mut a);
-    // Both regenerable, low-risk suspects are preselected, as in the CLI.
-    assert!(a.selected_bytes() >= 3 << 20);
+    assert_eq!(a.selected_bytes(), 0);
+    // Select the currently highlighted finding explicitly.
+    key(&mut a, KeyCode::Right);
+    key(&mut a, KeyCode::Char(' '));
+    assert!(a.selected_bytes() > 0);
+    let DiskState::Ready(v) = &a.disk else {
+        panic!("scan did not finish");
+    };
+    let selected_path = v
+        .selected
+        .iter()
+        .next()
+        .map(|&i| v.findings[i].path.clone())
+        .unwrap();
+    assert!(selected_path.ends_with(".pytest_cache"));
     key(&mut a, KeyCode::Char('c'));
     // Planning runs on a worker; the UI shows progress meanwhile.
     assert!(matches!(a.modal, Some(Modal::Busy { .. })));
@@ -131,7 +150,8 @@ fn clean_goes_through_confirmation_and_gate() {
     let Some(Modal::ConfirmClean(plan)) = &a.modal else {
         panic!("no confirmation screen");
     };
-    assert_eq!(plan.items.iter().filter(|i| i.selected).count(), 2);
+    assert_eq!(plan.items.len(), 1);
+    assert_eq!(plan.items.iter().filter(|i| i.selected).count(), 1);
     assert!(screen(&a).contains("Confirm clean"));
     // Nothing happens before confirming.
     assert!(fx.home.join("code/api/target").exists());
@@ -139,10 +159,11 @@ fn clean_goes_through_confirmation_and_gate() {
     until(&mut a, "the clean", |a| {
         matches!(a.modal, Some(Modal::Info(..)))
     });
-    assert!(!fx.home.join("code/api/target").exists());
-    assert!(fx.home.join(".local/share/Trash/files/target").exists());
+    assert!(!selected_path.exists());
+    assert!(fx.home.join("code/api/target").exists());
+    assert!(fx.home.join("code/web/node_modules").exists());
     let log = fs::read_to_string(fx.home.join(".local/state/fagia/actions.jsonl")).unwrap();
-    assert_eq!(log.lines().count(), 2);
+    assert_eq!(log.lines().count(), 1);
 }
 
 #[test]
@@ -150,6 +171,12 @@ fn cancel_leaves_everything() {
     let fx = fixture();
     let mut a = app(&fx);
     wait_ready(&mut a);
+    assert_eq!(a.selected_bytes(), 0);
+    key(&mut a, KeyCode::Char('c'));
+    assert!(a.modal.is_none());
+    assert!(a.status.contains("Nothing selected"));
+    key(&mut a, KeyCode::Right);
+    key(&mut a, KeyCode::Char(' '));
     key(&mut a, KeyCode::Char('c'));
     until(&mut a, "the plan", |a| {
         matches!(a.modal, Some(Modal::ConfirmClean(_)))
@@ -160,13 +187,78 @@ fn cancel_leaves_everything() {
 }
 
 #[test]
+fn report_only_trees_remain_visible_in_big_folders() {
+    let fx = fixture();
+    let mut a = app(&fx);
+    wait_ready(&mut a);
+
+    // The last category is the read-only folder browser.
+    for _ in 0..2 {
+        key(&mut a, KeyCode::Down);
+    }
+    key(&mut a, KeyCode::Right);
+    let code_idx = a
+        .items()
+        .iter()
+        .position(|i| i.path.ends_with("code"))
+        .unwrap();
+    for _ in 0..code_idx {
+        key(&mut a, KeyCode::Down);
+    }
+    key(&mut a, KeyCode::Enter);
+
+    let api_idx = a
+        .items()
+        .iter()
+        .position(|i| i.path.ends_with("api"))
+        .unwrap();
+    for _ in 0..api_idx {
+        key(&mut a, KeyCode::Down);
+    }
+    key(&mut a, KeyCode::Enter);
+    let target = a
+        .items()
+        .iter()
+        .find(|i| i.path.ends_with("target"))
+        .unwrap_or_else(|| {
+            panic!(
+                "target not visible in {:?}",
+                a.items().iter().map(|i| &i.path).collect::<Vec<_>>()
+            )
+        });
+    assert_eq!(target.size, 2 << 20);
+    assert!(target.finding.is_none());
+
+    key(&mut a, KeyCode::Backspace);
+    let web_idx = a
+        .items()
+        .iter()
+        .position(|i| i.path.ends_with("web"))
+        .unwrap();
+    for _ in 0..web_idx {
+        key(&mut a, KeyCode::Down);
+    }
+    key(&mut a, KeyCode::Enter);
+    let node_modules = a
+        .items()
+        .iter()
+        .find(|i| i.path.ends_with("node_modules"))
+        .unwrap();
+    assert_eq!(node_modules.size, 1 << 20);
+    assert!(node_modules.finding.is_none());
+    assert_eq!(a.selected_bytes(), 0);
+}
+
+#[test]
 fn deselect_filter_and_drill_down() {
     let fx = fixture();
     let mut a = app(&fx);
     wait_ready(&mut a);
-    // Items pane of the first category; space toggles the selection off.
+    // Items pane of the first category; select, then deselect the finding.
     key(&mut a, KeyCode::Right);
+    key(&mut a, KeyCode::Char(' '));
     let before = a.selected_bytes();
+    assert!(before > 0);
     key(&mut a, KeyCode::Char(' '));
     assert!(a.selected_bytes() < before);
 

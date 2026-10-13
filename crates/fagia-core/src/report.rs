@@ -472,6 +472,9 @@ pub struct RuleOut {
     pub paths: Vec<String>,
     pub require_sibling: Vec<String>,
     pub require_inside: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub forbid_sibling: Vec<String>,
+    pub report_only: bool,
     pub regenerable: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub regenerate: Option<String>,
@@ -492,6 +495,8 @@ impl From<&Rule> for RuleOut {
             paths: r.raw_paths.clone(),
             require_sibling: r.require_sibling.patterns.clone(),
             require_inside: r.require_inside.patterns.clone(),
+            forbid_sibling: r.forbid_sibling.patterns.clone(),
+            report_only: r.report_only,
             regenerable: r.regenerable,
             regenerate: r.regenerate.as_deref().map(str::to_string),
             risk: r.risk,

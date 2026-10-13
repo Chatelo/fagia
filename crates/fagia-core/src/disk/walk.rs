@@ -717,7 +717,9 @@ fn flatten(scan: &mut Scan, root: PathBuf, raw: RawDir) -> (IdMap, FindingLinks)
             tree.nodes.push(node_from(&child, n, id));
             queue.push_back((child, cid));
         }
-        if let Some(m) = raw.rule.take() {
+        if let Some(m) = raw.rule.take()
+            && !m.report_only
+        {
             let path = tree.path(id);
             let n = &tree.nodes[id as usize];
             let mut f = Finding::from_match(path, EntryKind::Dir, &m);
@@ -825,7 +827,9 @@ fn compute_reclaimable(
         }
     }
     for fr in &scan.files {
-        if let Some(m) = &fr.rule {
+        if let Some(m) = &fr.rule
+            && !m.report_only
+        {
             let mut f = Finding::from_match(tree.path(fr.dir).join(&*fr.name), EntryKind::File, m);
             f.real = if fr.counted { fr.stat.real } else { 0 };
             f.apparent = fr.stat.apparent;

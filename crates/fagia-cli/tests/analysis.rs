@@ -32,7 +32,7 @@ fn suspects_groups_categories_and_skips_decoys() {
         .iter()
         .map(|c| c["category"].as_str().unwrap())
         .collect();
-    assert_eq!(cats, ["Rust build", "Node deps", "Python venv", "Logs"]);
+    assert_eq!(cats, ["Logs"]);
     let home = env.home();
     let paths: Vec<String> = v["findings"]
         .as_array()
@@ -41,31 +41,30 @@ fn suspects_groups_categories_and_skips_decoys() {
         .map(|f| rel(&home, f["path"].as_str().unwrap()))
         .collect();
     assert!(!paths.iter().any(|p| p.contains("decoy")), "{paths:?}");
-    let venv = v["findings"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|f| f["rule_id"] == "python-venv")
-        .unwrap();
-    assert_eq!(venv["evidence"], "pyvenv.cfg inside");
-    assert_eq!(
-        venv["auto_select"], false,
-        "medium risk is never preselected"
+    assert!(
+        paths
+            .iter()
+            .all(|p| !p.contains("target") && !p.contains("node_modules") && !p.contains(".venv")),
+        "report-only paths leaked into suspects: {paths:?}"
     );
-    let target = v["findings"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|f| f["rule_id"] == "rust-target")
-        .unwrap();
-    assert_eq!(target["auto_select"], true);
-    assert!(rel(&home, target["project"]["path"].as_str().unwrap()).ends_with("/code/api"));
+    let largest = env.json(&["top", "code", "--depth", "2", "--min-size", "0"]);
+    for suffix in ["/code/api/target", "/code/web/node_modules"] {
+        let entry = largest["entries"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|e| rel(&home, e["path"].as_str().unwrap()).ends_with(suffix))
+            .unwrap_or_else(|| panic!("{suffix} missing from largest folders"));
+        assert!(entry.get("category").is_none(), "{suffix} became a suspect");
+        assert!(entry["real"].as_u64().unwrap() > 0);
+    }
 }
 
 #[test]
 fn suspects_text_layout() {
     let env = Env::new();
     projects(&env);
+    env.write("code/api/.pytest_cache/v/cache/lastfailed", 2 << 20);
     let out = env.cmd().args(["suspects", "code"]).output().unwrap();
     let text = String::from_utf8(out.stdout).unwrap();
     assert!(text.starts_with("CATEGORY"), "{text}");
@@ -77,10 +76,10 @@ fn suspects_text_layout() {
 fn stale_ranks_by_project_age() {
     let env = Env::new();
     for (name, days) in [("old", 400), ("mid", 120), ("new", 1)] {
-        let toml = env.write(&format!("code/{name}/Cargo.toml"), 10);
+        let makefile = env.write(&format!("code/{name}/Makefile"), 10);
         let src = env.write(&format!("code/{name}/src/lib.rs"), 10);
-        env.write(&format!("code/{name}/target/out.bin"), 2 << 20);
-        age(&toml, days);
+        env.write(&format!("code/{name}/build/out.bin"), 2 << 20);
+        age(&makefile, days);
         age(&src, days);
     }
     let v = env.json(&["stale", "code"]);
@@ -91,7 +90,7 @@ fn stale_ranks_by_project_age() {
         .iter()
         .map(|f| rel(&home, f["path"].as_str().unwrap()))
         .collect();
-    assert_eq!(got, ["/code/old/target", "/code/mid/target"]);
+    assert_eq!(got, ["/code/old/build", "/code/mid/build"]);
     let v = env.json(&["stale", "code", "--older", "200d"]);
     assert_eq!(v["findings"].as_array().unwrap().len(), 1);
     assert_eq!(v["stale_days"], 200);
@@ -210,7 +209,7 @@ fn rules_list_test_and_validate() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|r| r["id"] == "rust-target")
+            .any(|r| r["id"] == "rust-target" && r["report_only"] == true)
     );
     let v = env.json(&["rules", "test", "code/decoy/target"]);
     assert!(v["winner"].is_null());

@@ -37,6 +37,7 @@ fn list(ctx: &Ctx) -> Result<Outcome> {
         ("MATCH", Align::Left),
         ("EVIDENCE", Align::Left),
         ("REGEN", Align::Left),
+        ("LIST", Align::Left),
         ("RISK", Align::Left),
         ("PRIO", Align::Right),
         ("SOURCE", Align::Left),
@@ -62,6 +63,9 @@ fn list(ctx: &Ctx) -> Result<Outcome> {
         if !r.require_inside.is_empty() {
             ev.push(format!("inside {}", r.require_inside.join("|")));
         }
+        if !r.forbid_sibling.is_empty() {
+            ev.push(format!("not beside {}", r.forbid_sibling.join("|")));
+        }
         let mut source = match r.origin {
             Origin::Builtin => "built-in",
             Origin::User => "config",
@@ -84,6 +88,11 @@ fn list(ctx: &Ctx) -> Result<Outcome> {
                 "yes".into()
             } else {
                 "no".into()
+            },
+            if r.report_only {
+                "largest folders".into()
+            } else {
+                "suspects".into()
             },
             format!("{:?}", r.risk).to_lowercase(),
             r.priority.to_string(),

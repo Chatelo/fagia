@@ -57,6 +57,7 @@ pub(crate) fn parse(text: &str) -> Vec<Finding> {
                 category: Arc::from("Docker"),
                 evidence: format!("docker system df: {count} {}", kind.to_lowercase()),
                 // Removed through docker itself, never by deleting files.
+                report_only: false,
                 regenerable: false,
                 regenerate: Some(Arc::from("docker pull / docker build")),
                 risk: if kind == "Local Volumes" {

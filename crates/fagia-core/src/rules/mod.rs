@@ -41,6 +41,8 @@ pub struct RuleSpec {
     pub paths: Option<Vec<String>>,
     pub require_sibling: Option<Vec<String>>,
     pub require_inside: Option<Vec<String>>,
+    pub forbid_sibling: Option<Vec<String>>,
+    pub report_only: Option<bool>,
     pub regenerable: Option<bool>,
     pub regenerate: Option<String>,
     pub risk: Option<Risk>,
@@ -61,6 +63,8 @@ impl RuleSpec {
             paths,
             require_sibling,
             require_inside,
+            forbid_sibling,
+            report_only,
             regenerable,
             regenerate,
             risk,
@@ -128,6 +132,10 @@ pub struct Rule {
     pub paths: Vec<PathBuf>,
     pub require_sibling: NamePatterns,
     pub require_inside: NamePatterns,
+    /// Any of these beside the match means it belongs to something else
+    /// (a database journal named like a log).
+    pub forbid_sibling: NamePatterns,
+    pub report_only: bool,
     pub regenerable: bool,
     pub regenerate: Option<Arc<str>>,
     pub risk: Risk,
@@ -168,6 +176,8 @@ impl Rule {
             paths,
             require_sibling: NamePatterns::new(&spec.id, spec.require_sibling.unwrap_or_default())?,
             require_inside: NamePatterns::new(&spec.id, spec.require_inside.unwrap_or_default())?,
+            forbid_sibling: NamePatterns::new(&spec.id, spec.forbid_sibling.unwrap_or_default())?,
+            report_only: spec.report_only.unwrap_or(false),
             regenerable: spec.regenerable.unwrap_or(false),
             regenerate: spec.regenerate.map(|s| Arc::from(s.as_str())),
             risk: spec.risk.unwrap_or_default(),
@@ -216,6 +226,7 @@ impl Rule {
             rule_id: self.id.clone(),
             category: self.category.clone(),
             evidence,
+            report_only: self.report_only,
             regenerable: self.regenerable,
             regenerate: self.regenerate.clone(),
             risk: self.risk,
@@ -262,8 +273,72 @@ pub struct RuleSet {
     extensions: HashMap<String, Vec<usize>>,
     path_rules: HashMap<PathBuf, Vec<usize>>,
     max_ext_dots: usize,
+    installed: Installed,
     /// For showing known paths with `~`.
     home: PathBuf,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(default, deny_unknown_fields)]
+struct InstalledSpec {
+    hidden_in_home: bool,
+    paths: Vec<String>,
+    inside_names: Vec<String>,
+}
+
+/// Where installed software lives; name-matched rules never match there.
+#[derive(Debug, Clone, Default)]
+struct Installed {
+    hidden_in_home: bool,
+    paths: Vec<PathBuf>,
+    inside_names: Vec<OsString>,
+}
+
+impl Installed {
+    fn from_spec(spec: InstalledSpec, dirs: &Dirs) -> Result<Self> {
+        let paths = spec
+            .paths
+            .iter()
+            .map(|p| {
+                resolve_vars(p, dirs).ok_or_else(|| Error::Rule {
+                    id: "installed".into(),
+                    message: format!("unknown variable in path {p:?}"),
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+        Ok(Self {
+            hidden_in_home: spec.hidden_in_home,
+            paths,
+            inside_names: spec.inside_names.into_iter().map(OsString::from).collect(),
+        })
+    }
+
+    /// Why `path` belongs to installed software, if it does.
+    fn reason(&self, path: &Path, home: &Path) -> Option<String> {
+        if self.hidden_in_home
+            && let Ok(rel) = path.strip_prefix(home)
+            && let Some(top) = rel.components().next()
+            && top.as_os_str().to_string_lossy().starts_with('.')
+        {
+            return Some(format!(
+                "inside {} (program or app data)",
+                display_path(&home.join(top), Some(home))
+            ));
+        }
+        if let Some(root) = self.paths.iter().find(|r| path.starts_with(r)) {
+            return Some(format!(
+                "inside installed software {}",
+                display_path(root, Some(home))
+            ));
+        }
+        path.components()
+            .filter_map(|c| match c {
+                std::path::Component::Normal(n) => Some(n),
+                _ => None,
+            })
+            .find(|n| self.inside_names.iter().any(|i| i == n))
+            .map(|n| format!("inside an installed {} tree", n.to_string_lossy()))
+    }
 }
 
 #[derive(Deserialize, Default)]
@@ -271,6 +346,7 @@ pub struct RuleSet {
 struct RuleFile {
     rule: Vec<RuleSpec>,
     mem_rule: Vec<MemRuleSpec>,
+    installed: InstalledSpec,
 }
 
 impl RuleSet {
@@ -308,6 +384,7 @@ impl RuleSet {
             .collect::<Result<Vec<_>>>()?;
         let mem_rules = mem::merge(file.mem_rule, &cfg.mem_rule)?;
         let mut set = Self::index(rules, mem_rules);
+        set.installed = Installed::from_spec(file.installed, dirs)?;
         set.home = dirs.home.clone();
         Ok(set)
     }
@@ -321,6 +398,7 @@ impl RuleSet {
             extensions: HashMap::new(),
             path_rules: HashMap::new(),
             max_ext_dots: 1,
+            installed: Installed::default(),
             home: PathBuf::new(),
         };
         for (i, r) in s.rules.iter().enumerate().filter(|(_, r)| r.enabled) {
@@ -361,6 +439,20 @@ impl RuleSet {
         self.rules.iter().find(|r| &*r.id == id)
     }
 
+    /// Why acting on `path` would touch installed software or app data, if
+    /// it would. Only cleanable fixed-path rules are exempt.
+    pub fn installed_refusal(&self, path: &Path) -> Option<String> {
+        let known_cache = self
+            .rules
+            .iter()
+            .filter(|r| r.enabled && r.kind == RuleKind::Path && !r.report_only)
+            .any(|r| r.paths.iter().any(|p| path.starts_with(p)));
+        if known_cache {
+            return None;
+        }
+        self.installed.reason(path, &self.home)
+    }
+
     /// Problems that make a rule unsafe to use: fixed paths that are, or
     /// contain, a protected path.
     pub fn validate(&self, protected: &[PathBuf]) -> Vec<String> {
@@ -395,6 +487,11 @@ impl RuleSet {
                 None,
             ));
         }
+        if !r.report_only
+            && let Some(why) = self.installed.reason(path, &self.home)
+        {
+            return Err(why);
+        }
         if !r.require_sibling.is_empty() {
             match r.require_sibling.find(siblings) {
                 Some(n) => parts.push(format!("{} in parent", n.to_string_lossy())),
@@ -405,6 +502,9 @@ impl RuleSet {
                     ));
                 }
             }
+        }
+        if let Some(n) = r.forbid_sibling.find(siblings) {
+            return Err(format!("{} in parent", n.to_string_lossy()));
         }
         if !r.require_inside.is_empty() {
             let names = inside().unwrap_or_default();
@@ -435,6 +535,12 @@ impl RuleSet {
         }
         let project = (r.kind == RuleKind::Dir).then_some(parent).flatten();
         Ok((parts.join(", "), project))
+    }
+
+    pub fn report_only_refusal(&self, rule_id: &str) -> Option<String> {
+        self.get(rule_id)
+            .filter(|rule| rule.report_only)
+            .map(|_| "report-only path; inspect it in the largest-folders view".into())
     }
 
     fn candidates(&self, path: &Path, name: &OsStr, is_dir: bool) -> Vec<usize> {

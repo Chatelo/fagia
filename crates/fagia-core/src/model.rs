@@ -44,6 +44,7 @@ pub struct Match {
     pub rule_id: Arc<str>,
     pub category: Arc<str>,
     pub evidence: String,
+    pub report_only: bool,
     pub regenerable: bool,
     pub regenerate: Option<Arc<str>>,
     pub risk: Risk,

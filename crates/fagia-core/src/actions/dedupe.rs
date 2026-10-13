@@ -47,7 +47,7 @@ pub struct DedupeOptions {
 const OWN_TYPES: &[&str] = &[
     "pdf", "epub", "mobi", "azw3", "djvu", "doc", "docx", "odt", "rtf", "xls", "xlsx", "ods",
     "csv", "ppt", "pptx", "odp", "zip", "tar", "gz", "tgz", "xz", "bz2", "zst", "7z", "rar", "iso",
-    "deb", "rpm", "appimage", "dmg", "apk",
+    "deb", "rpm", "dmg", "apk",
 ];
 
 /// Why a copy must not be removed on type grounds, if so.

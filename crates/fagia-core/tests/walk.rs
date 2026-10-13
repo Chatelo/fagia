@@ -196,18 +196,13 @@ fn reclaimable_excludes_links_that_survive_elsewhere() {
         &Progress::default(),
     )
     .unwrap();
-    let f = s
-        .findings
-        .iter()
-        .find(|f| &*f.rule_id == "node-modules")
-        .unwrap();
-    // "proj/..." sorts before "store/...", so node_modules owns the shared inode.
-    assert!(f.real >= 3 << 20, "real {}", f.real);
     assert!(
-        f.reclaimable >= 2 << 20 && f.reclaimable < 3 << 20,
-        "reclaimable {}",
-        f.reclaimable
+        s.findings.iter().all(|f| &*f.rule_id != "node-modules"),
+        "node_modules appeared as a cleanable finding"
     );
+    let dependencies = s.tree.find(&r.join("proj/node_modules")).unwrap();
+    // The folder tree still attributes unique hard links for size reporting.
+    assert!(s.tree.node(dependencies).real >= 3 << 20);
     let du = du_bytes(r);
     assert!(s.total_real().abs_diff(du) as f64 / du as f64 <= 0.01);
 }

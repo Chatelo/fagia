@@ -13,6 +13,8 @@ fn fixture(env: &Env) {
     env.write("code/web/node_modules/x/index.js", 1 << 20);
     env.write("code/py/.venv/pyvenv.cfg", 10);
     env.write("code/py/.venv/lib/x.py", 1 << 20);
+    env.write("code/api/.pytest_cache/v/cache/lastfailed", 2 << 20);
+    env.write("code/web/__pycache__/module.pyc", 2 << 20);
 }
 
 #[test]
@@ -24,8 +26,7 @@ fn dry_run_changes_nothing() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Dry run"))
-        .stdout(predicate::str::contains("[x]"))
-        .stdout(predicate::str::contains("[ ]"));
+        .stdout(predicate::str::contains("[x]"));
     assert!(env.home().join("code/api/target").exists());
 }
 
@@ -54,13 +55,14 @@ fn yes_trashes_preselected_then_undo_restores() {
         .stdout(predicate::str::contains("Dry run"))
         .stdout(predicate::str::contains("Trashed 2 of 2"));
     let h = env.home();
-    assert!(!h.join("code/api/target").exists());
-    assert!(!h.join("code/web/node_modules").exists());
+    assert!(h.join("code/api/target").exists());
+    assert!(h.join("code/web/node_modules").exists());
     assert!(
         h.join("code/py/.venv").exists(),
-        "medium risk is never auto-selected"
+        "virtual environments are report-only"
     );
-    assert!(h.join(".local/share/Trash/files/target").exists());
+    assert!(h.join(".local/share/Trash/files/.pytest_cache").exists());
+    assert!(h.join(".local/share/Trash/files/__pycache__").exists());
     let log = fs::read_to_string(h.join(".local/state/fagia/actions.jsonl")).unwrap();
     assert_eq!(log.lines().count(), 2);
 
@@ -74,6 +76,8 @@ fn yes_trashes_preselected_then_undo_restores() {
         .assert()
         .success()
         .stdout(predicate::str::contains("restored"));
+    assert!(h.join("code/api/.pytest_cache/v/cache/lastfailed").exists());
+    assert!(h.join("code/web/__pycache__/module.pyc").exists());
     assert!(h.join("code/api/target/debug/app").exists());
     assert!(h.join("code/web/node_modules/x/index.js").exists());
     env.cmd()
@@ -129,7 +133,7 @@ fn config_protect_is_honoured() {
         .success()
         .stdout(predicate::str::contains("skipped: inside protected"));
     assert!(env.home().join("code/api/target").exists());
-    assert!(!env.home().join("code/web/node_modules").exists());
+    assert!(env.home().join("code/web/node_modules").exists());
 }
 
 #[test]
@@ -138,11 +142,12 @@ fn project_protect_is_honoured() {
     fixture(&env);
     fs::write(
         env.home().join("code/web/.fagia.toml"),
-        "[protect]\npaths = [\"node_modules\"]\n",
+        "[protect]\npaths = [\"node_modules\", \"__pycache__\"]\n",
     )
     .unwrap();
     env.cmd().args(["clean", "code", "-y"]).assert().success();
     assert!(env.home().join("code/web/node_modules").exists());
+    assert!(env.home().join("code/web/__pycache__").exists());
 }
 
 #[test]
@@ -150,9 +155,11 @@ fn category_filter_limits_clean() {
     let env = Env::new();
     fixture(&env);
     env.cmd()
-        .args(["clean", "code", "-y", "--category", "rust"])
+        .args(["clean", "code", "-y", "--category", "test"])
         .assert()
         .success();
-    assert!(!env.home().join("code/api/target").exists());
+    assert!(!env.home().join("code/api/.pytest_cache").exists());
+    assert!(env.home().join("code/api/target").exists());
     assert!(env.home().join("code/web/node_modules").exists());
+    assert!(env.home().join("code/web/__pycache__").exists());
 }

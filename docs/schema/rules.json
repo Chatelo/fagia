@@ -38,6 +38,12 @@
           },
           "type": "array"
         },
+        "forbid_sibling": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "id": {
           "type": "string"
         },
@@ -72,6 +78,9 @@
             "null"
           ]
         },
+        "report_only": {
+          "type": "boolean"
+        },
         "require_inside": {
           "items": {
             "type": "string"
@@ -97,6 +106,8 @@
         "paths",
         "require_sibling",
         "require_inside",
+        "forbid_sibling",
+        "report_only",
         "regenerable",
         "risk",
         "priority",

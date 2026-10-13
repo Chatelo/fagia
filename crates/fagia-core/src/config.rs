@@ -242,6 +242,7 @@ forgotten_hours = 24
 # regenerable = true
 # regenerate = "mix deps.get && mix compile"
 # risk = "low"
+# report_only = true # show size, but never list as a cleanable suspect
 
 # Turn off a built-in rule:
 # [[rule]]

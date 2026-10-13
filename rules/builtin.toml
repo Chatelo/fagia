@@ -9,6 +9,28 @@
 # {cargo_home}. Auto-selection in `clean` needs regenerable = true and
 # risk = "low".
 
+# Installed software, dependency trees and package caches are report-only:
+# the scan keeps their sizes in the folder tree but never lists them as
+# cleanable suspects. The gate also refuses report-only rules.
+#
+# - `hidden_in_home`: every hidden folder directly in home (~/.nvm,
+#   ~/.vscode, ~/.config, ~/.local, ~/.ssh, ~/.jdks, ...). Programs keep
+#   their installs, extensions, keys and databases there.
+# - `paths`: other install locations, each with everything below it.
+# - `inside_names`: these folders and their contents are protected.
+[installed]
+hidden_in_home = true
+paths = [
+  "{config_dir}", "{data_dir}", "{cache_dir}", "{state_dir}", "{cargo_home}",
+  "{home}/bin", "{home}/Applications", "{home}/snap", "{home}/go",
+  "{home}/sdk", "{home}/Android", "{home}/flutter",
+  "{home}/anaconda3", "{home}/miniconda3", "{home}/miniforge3",
+]
+inside_names = [
+  "node_modules", "site-packages", "dist-packages", ".git", "target",
+  ".venv", "venv", "env", ".gradle", "bin", "sbin", "libexec",
+]
+
 # ---------------------------------------------------------------- builds
 
 [[rule]]
@@ -17,6 +39,7 @@ category = "Rust build"
 kind = "dir"
 names = ["target"]
 require_sibling = ["Cargo.toml"]
+report_only = true
 regenerable = true
 regenerate = "cargo build"
 risk = "low"
@@ -28,6 +51,7 @@ category = "Node deps"
 kind = "dir"
 names = ["node_modules"]
 require_sibling = ["package.json"]
+report_only = true
 regenerable = true
 regenerate = "npm install"
 risk = "low"
@@ -39,6 +63,7 @@ category = "Python venv"
 kind = "dir"
 names = [".venv", "venv", "env"]
 require_inside = ["pyvenv.cfg"]
+report_only = true
 regenerable = true
 regenerate = "python -m venv"
 # A venv may hold packages that are not in any requirements file.
@@ -94,6 +119,7 @@ category = "Gradle"
 kind = "dir"
 names = [".gradle", "build"]
 require_sibling = ["build.gradle*", "settings.gradle*"]
+report_only = true
 regenerable = true
 regenerate = "gradle build"
 risk = "low"
@@ -165,24 +191,27 @@ id = "cargo-cache"
 category = "Cargo cache"
 kind = "path"
 paths = ["{cargo_home}/registry", "{cargo_home}/git"]
+report_only = true
 regenerable = true
 regenerate = "cargo fetch"
-risk = "low"
+risk = "medium"
 
 [[rule]]
 id = "npm-cache"
 category = "npm cache"
 kind = "path"
 paths = ["{home}/.npm"]
+report_only = true
 regenerable = true
 regenerate = "automatic"
-risk = "low"
+risk = "medium"
 
 [[rule]]
 id = "yarn-cache"
 category = "Yarn cache"
 kind = "path"
 paths = ["{cache_dir}/yarn"]
+report_only = true
 regenerable = true
 regenerate = "automatic"
 risk = "low"
@@ -192,6 +221,7 @@ id = "pnpm-store"
 category = "pnpm store"
 kind = "path"
 paths = ["{data_dir}/pnpm/store"]
+report_only = true
 regenerable = true
 regenerate = "pnpm install"
 # Projects hard-link into the store; little is freed while they exist.
@@ -202,6 +232,7 @@ id = "pip-cache"
 category = "pip cache"
 kind = "path"
 paths = ["{cache_dir}/pip"]
+report_only = true
 regenerable = true
 regenerate = "automatic"
 risk = "low"
@@ -211,6 +242,7 @@ id = "go-build-cache"
 category = "Go build cache"
 kind = "path"
 paths = ["{cache_dir}/go-build"]
+report_only = true
 regenerable = true
 regenerate = "automatic"
 risk = "low"
@@ -220,15 +252,17 @@ id = "gradle-cache"
 category = "Gradle cache"
 kind = "path"
 paths = ["{home}/.gradle/caches"]
+report_only = true
 regenerable = true
 regenerate = "gradle build"
-risk = "low"
+risk = "medium"
 
 [[rule]]
 id = "maven-repo"
 category = "Maven repository"
 kind = "path"
 paths = ["{home}/.m2/repository"]
+report_only = true
 regenerable = true
 regenerate = "mvn dependency:resolve"
 risk = "medium"
@@ -238,6 +272,7 @@ id = "huggingface-cache"
 category = "AI models"
 kind = "path"
 paths = ["{cache_dir}/huggingface"]
+report_only = true
 regenerable = true
 regenerate = "re-download"
 risk = "medium"
@@ -258,6 +293,9 @@ id = "logs"
 category = "Logs"
 kind = "file"
 extensions = ["log"]
+# LevelDB/RocksDB journals and Kafka segments are named *.log but are a
+# database's live data.
+forbid_sibling = ["CURRENT", "LOCK", "MANIFEST-*", "*.ldb", "*.sst", "*.index", "*.timeindex"]
 regenerable = false
 risk = "medium"
 
@@ -283,8 +321,9 @@ category = "Archives"
 kind = "file"
 extensions = [
   "zip", "tar", "tar.gz", "tgz", "tar.xz", "txz", "tar.bz2", "tar.zst", "7z",
-  "rar", "iso", "deb", "rpm", "appimage", "dmg",
+  "rar", "iso", "deb", "rpm", "dmg",
 ]
+# Not .AppImage: that is a program the user runs, not an archive.
 regenerable = false
 regenerate = "re-download"
 risk = "medium"
@@ -324,6 +363,31 @@ exe = [
   "gnome-session-binary", "gnome-session", "ksmserver", "plasmashell", "lxsession",
   "xfce4-session", "gdm", "gdm-wayland-session", "gdm-x-session", "sddm",
   "lightdm", "login", "pipewire", "pipewire-pulse", "wireplumber", "pulseaudio",
+]
+system = true
+
+# Per-user desktop plumbing: settings daemons, input methods, keyring,
+# portals, file-system helpers. Under systemd they are also refused as
+# services; this list covers sessions without it and names the group.
+[[mem_rule]]
+id = "desktop-services"
+group = "Desktop services"
+exe = [
+  "gnome-keyring-daemon", "gcr-ssh-agent", "ssh-agent", "gpg-agent", "dconf-service",
+  "ibus-daemon", "ibus-x11", "ibus-portal", "ibus-extension-gtk3", "ibus-engine-simple", "fcitx5",
+  "xdg-desktop-portal", "xdg-desktop-portal-gnome", "xdg-desktop-portal-gtk",
+  "xdg-desktop-portal-kde", "xdg-desktop-portal-wlr", "xdg-desktop-portal-hyprland",
+  "xdg-document-portal", "xdg-permission-store", "at-spi-bus-launcher", "at-spi2-registryd",
+  "gvfsd", "gvfsd-fuse", "gvfsd-metadata", "gvfs-udisks2-volume-monitor",
+  "gsd-power", "gsd-media-keys", "gsd-keyboard", "gsd-xsettings", "gsd-color", "gsd-sound",
+  "gsd-rfkill", "gsd-smartcard", "gsd-sharing", "gsd-wwan", "gsd-housekeeping", "gsd-datetime",
+  "gsd-a11y-settings", "gsd-print-notifications", "gsd-printer", "gsd-screensaver-proxy",
+  "gsd-usb-protection", "gnome-session-ctl", "gnome-session-service", "gnome-session-init-worker",
+  "gnome-shell-calendar-server", "mutter-x11-frames", "evolution-source-registry",
+  "evolution-calendar-factory", "evolution-addressbook-factory", "goa-daemon", "goa-identity-service",
+  "kded5", "kded6", "kglobalaccel", "kglobalacceld", "polkit-gnome-authentication-agent-1",
+  "polkit-kde-authentication-agent-1", "lxpolkit", "xfsettingsd", "xfwm4", "xfce4-panel",
+  "mate-settings-daemon", "cinnamon-settings-daemon",
 ]
 system = true
 

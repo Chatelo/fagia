@@ -87,6 +87,16 @@ fn self_and_ancestors(platform: &dyn Platform) -> HashSet<u32> {
     out
 }
 
+/// The systemd service a process runs in, if any. Apps run in scopes
+/// (`app-*.scope`, terminal tabs in `vte-spawn-*.scope`); services are
+/// session or system infrastructure.
+fn service_unit(p: &crate::platform::ProcInfo) -> Option<String> {
+    p.cgroup_leaf
+        .as_deref()
+        .filter(|u| u.ends_with(".service"))
+        .map(crate::paths::escape_control)
+}
+
 pub fn plan(
     platform: &dyn Platform,
     group: &Group,
@@ -107,6 +117,17 @@ pub fn plan(
                 Some("system process".to_string())
             } else if protected.contains(&p.key.pid) {
                 Some("fagia itself or the shell running it".to_string())
+            } else if let Some(unit) = service_unit(p) {
+                // systemd restarts or depends on its services; killing one
+                // breaks the session (input, sound, keyring) or the system.
+                let user = if p.uid == me && me != 0 {
+                    " --user"
+                } else {
+                    ""
+                };
+                Some(format!(
+                    "systemd service {unit}; stop it with `systemctl{user} stop {unit}`"
+                ))
             } else if p.uid != me && !(elevated && allow_other_users) {
                 Some(format!(
                     "belongs to user {}; needs root and --allow-other-users",
@@ -233,9 +254,14 @@ mod tests {
             cwd: None,
             members: pids
                 .iter()
-                .map(|&pid| Member {
-                    info: plat.process(pid).unwrap(),
-                    mem: plat.process_memory(pid),
+                .map(|&pid| {
+                    let mut info = plat.process(pid).unwrap();
+                    // The test runner may itself be a systemd service (CI).
+                    info.cgroup_leaf = Some("app-test.scope".into());
+                    Member {
+                        info,
+                        mem: plat.process_memory(pid),
+                    }
                 })
                 .collect(),
             dev_suspect: false,
@@ -274,6 +300,23 @@ mod tests {
         let entries = log.read();
         assert_eq!(entries.len(), 6);
         assert!(entries.iter().all(|e| e.pid.is_some()));
+    }
+
+    #[test]
+    fn systemd_services_are_refused() {
+        let plat = LinuxPlatform::new();
+        let mut kid = Command::new("sleep").arg("60").spawn().unwrap();
+        let mut g = group_of(&plat, &[kid.id()]);
+        g.members[0].info.cgroup_leaf = Some("org.gnome.SettingsDaemon.Power.service".into());
+        let p = plan(&plat, &g, None, false);
+        assert_eq!(p.allowed().count(), 0);
+        let why = p.targets[0].refusal.as_deref().unwrap();
+        assert!(
+            why.contains("systemctl --user stop org.gnome.SettingsDaemon.Power.service"),
+            "{why}"
+        );
+        let _ = kid.kill();
+        let _ = kid.wait();
     }
 
     #[test]

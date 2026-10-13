@@ -46,6 +46,39 @@ fn builtin_rules_load_and_validate() {
     assert_eq!(rs.validate(&protected), Vec::<String>::new());
 }
 
+#[test]
+fn home_local_toolchain_caches_are_medium_risk() {
+    let tmp = TempDir::new().unwrap();
+    let rs = RuleSet::builtin(&dirs_at(tmp.path())).unwrap();
+    for id in [
+        "cargo-cache",
+        "npm-cache",
+        "yarn-cache",
+        "pnpm-store",
+        "pip-cache",
+        "go-build-cache",
+        "gradle-cache",
+        "maven-repo",
+        "huggingface-cache",
+    ] {
+        let rule = rs
+            .rules()
+            .iter()
+            .find(|rule| &*rule.id == id)
+            .unwrap_or_else(|| panic!("missing cache rule {id}"));
+        assert!(rule.report_only, "{id}");
+    }
+    for id in ["cargo-cache", "npm-cache", "gradle-cache"] {
+        let rule = rs
+            .rules()
+            .iter()
+            .find(|rule| &*rule.id == id)
+            .unwrap_or_else(|| panic!("missing built-in rule {id}"));
+        assert_eq!(rule.risk, crate::model::Risk::Medium, "{id}");
+        assert!(rule.report_only, "{id}");
+    }
+}
+
 /// Every built-in dir rule: with its evidence it matches; the same name
 /// without evidence (the decoy) is never a finding.
 #[test]
@@ -71,6 +104,7 @@ fn every_dir_rule_needs_its_evidence() {
             let m = classify(&rs, &target)
                 .unwrap_or_else(|| panic!("{} did not match {name}", rule.id));
             assert!(m.regenerable == rule.regenerable, "{}", rule.id);
+            assert_eq!(m.report_only, rule.report_only, "{}", rule.id);
 
             let decoy = tmp.path().join(format!("decoy{i}-{name}")).join(name);
             fs::create_dir_all(&decoy).unwrap();
@@ -113,6 +147,72 @@ fn overlapping_rules_pick_highest_priority() {
             .iter()
             .any(|c| c.rule_id == "flutter-build" && !c.matched)
     );
+}
+
+/// Paths a real clean trashed, breaking npm, pnpm, global CLIs and editor
+/// extensions: each is a `node_modules` beside a `package.json`, but
+/// inside installed software.
+#[test]
+fn installed_software_is_never_a_finding() {
+    let tmp = TempDir::new().unwrap();
+    let d = dirs_at(tmp.path());
+    let rs = RuleSet::builtin(&d).unwrap();
+    for rel in [
+        ".nvm/versions/node/v24.14.1/lib/node_modules/npm",
+        ".nvm/versions/node/v24.14.1/lib/node_modules/eas-cli",
+        ".local/share/pnpm/.tools/pnpm/10.33.2_tmp_17794_0",
+        ".local/share/pnpm/global/v11/d59c-1a0d7a4a57a-2a1ab43d7c716a03",
+        ".vscode/extensions/ritwickdey.liveserver-5.7.10",
+        ".config/Code/agent-host/sdk-cache/claude/0.3.220/linux-x64/node_modules/type-is",
+        ".jdks/openjdk-21/lib/js-tool",
+        "Android/Sdk/emulator/lib/js-tool",
+        // Not under a known tool root: caught by the ancestor folder name.
+        "somewhere/lib/node_modules/some-cli",
+        "tools/bin/js-tool",
+    ] {
+        let pkg = tmp.path().join(rel);
+        touch(&pkg.join("package.json"));
+        let nm = pkg.join("node_modules");
+        fs::create_dir_all(&nm).unwrap();
+        let m = classify(&rs, &nm).unwrap_or_else(|| panic!("{rel} did not match"));
+        assert!(m.report_only, "{rel} was not report-only");
+    }
+
+    // A project's own dependency tree is measured but not a suspect.
+    let proj = tmp.path().join("projs/app");
+    touch(&proj.join("package.json"));
+    fs::create_dir_all(proj.join("node_modules")).unwrap();
+    let m = classify(&rs, &proj.join("node_modules")).unwrap();
+    assert!(m.report_only);
+
+    // Fixed-path rules still apply inside a tool root.
+    let store = d.data.join("pnpm/store");
+    fs::create_dir_all(&store).unwrap();
+    let m = classify(&rs, &store).unwrap();
+    assert_eq!(&*m.rule_id, "pnpm-store");
+    assert!(m.report_only);
+}
+
+/// Files named like junk that belong to a program: a database journal
+/// named `*.log`, an AppImage (a program, not an archive), anything in
+/// app data.
+#[test]
+fn program_files_are_never_findings() {
+    let tmp = TempDir::new().unwrap();
+    let rs = RuleSet::builtin(&dirs_at(tmp.path())).unwrap();
+    let file = |rel: &str| {
+        let p = tmp.path().join(rel);
+        touch(&p);
+        let siblings = list_names(p.parent().unwrap());
+        rs.classify_file(&p, p.file_name().unwrap(), &siblings)
+    };
+    touch(&tmp.path().join("data/db/CURRENT"));
+    assert!(file("data/db/000123.log").is_none(), "LevelDB journal");
+    assert!(file(".config/google-chrome/Default/x/000900.log").is_none());
+    assert!(file("Downloads/audacity.AppImage").is_none());
+    assert!(file("bin/old.zip").is_none());
+    assert_eq!(&*file("work/build.log").unwrap().rule_id, "logs");
+    assert_eq!(&*file("Downloads/old.zip").unwrap().rule_id, "archives");
 }
 
 #[test]
@@ -214,7 +314,12 @@ fn scan_collapses_suspects_and_skips_decoys() {
     touch(&root.join("api/target/debug/app"));
     touch(&root.join("api/target/debug/deps/x.rlib"));
     touch(&root.join("web/package.json"));
-    touch(&root.join("web/node_modules/left-pad/index.js"));
+    fs::create_dir_all(root.join("web/node_modules/left-pad")).unwrap();
+    fs::write(
+        root.join("web/node_modules/left-pad/index.js"),
+        vec![b'x'; 1 << 20],
+    )
+    .unwrap();
     touch(&root.join("decoy/target/keep.txt"));
     touch(&root.join("decoy/build/keep.txt"));
     let plat = LinuxPlatform::new();
@@ -228,7 +333,7 @@ fn scan_collapses_suspects_and_skips_decoys() {
     .unwrap();
     let mut ids: Vec<_> = s.findings.iter().map(|f| f.rule_id.to_string()).collect();
     ids.sort();
-    assert_eq!(ids, ["node-modules", "rust-target"]);
+    assert!(ids.is_empty(), "report-only findings leaked: {ids:?}");
     let target = s
         .tree
         .find(&root.canonicalize().unwrap().join("api/target"))
@@ -239,9 +344,41 @@ fn scan_collapses_suspects_and_skips_decoys() {
         "suspect children were listed"
     );
     assert_eq!(s.tree.node(target).files, 2);
+    let node_modules = s
+        .tree
+        .find(&root.canonicalize().unwrap().join("web/node_modules"))
+        .unwrap();
+    assert_eq!(s.tree.children(node_modules).count(), 0);
+    assert!(s.tree.node(node_modules).real >= 1 << 20);
     assert!(
         s.tree
             .find(&root.canonicalize().unwrap().join("decoy/target"))
             .is_some()
     );
+}
+
+#[test]
+fn report_only_cache_is_sized_but_not_a_finding() {
+    let tmp = TempDir::new().unwrap();
+    let root = tmp.path();
+    touch(&root.join(".npm/_cacache/content/cache-entry"));
+    let platform = LinuxPlatform::new();
+    let rules = RuleSet::builtin(&dirs_at(root)).unwrap();
+    let scan_result = scan(
+        &platform,
+        Some(&rules),
+        &ScanOptions::new(root),
+        &Progress::default(),
+    )
+    .unwrap();
+    assert!(
+        scan_result
+            .findings
+            .iter()
+            .all(|f| f.path != root.join(".npm")),
+        "the npm cache appeared as a cleanable finding"
+    );
+    let cache = scan_result.tree.find(&root.join(".npm")).unwrap();
+    assert!(scan_result.tree.node(cache).real > 0);
+    assert_eq!(scan_result.tree.children(cache).count(), 0);
 }

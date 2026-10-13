@@ -112,14 +112,14 @@ mod tests {
         let r = tmp.path();
         for (proj, age) in [("old", 200), ("fresh", 2)] {
             fs::create_dir_all(r.join(proj).join("src")).unwrap();
-            fs::create_dir_all(r.join(proj).join("target")).unwrap();
-            fs::write(r.join(proj).join("Cargo.toml"), "x").unwrap();
+            fs::create_dir_all(r.join(proj).join("build")).unwrap();
+            fs::write(r.join(proj).join("Makefile"), "x").unwrap();
             fs::write(r.join(proj).join("src/main.rs"), "x").unwrap();
-            fs::write(r.join(proj).join("target/out.bin"), "x").unwrap();
-            set_age(&r.join(proj).join("Cargo.toml"), age);
+            fs::write(r.join(proj).join("build/out.bin"), "x").unwrap();
+            set_age(&r.join(proj).join("Makefile"), age);
             set_age(&r.join(proj).join("src/main.rs"), age);
             // Build output is always recent.
-            set_age(&r.join(proj).join("target/out.bin"), 0);
+            set_age(&r.join(proj).join("build/out.bin"), 0);
         }
         let plat = LinuxPlatform::new();
         let rules = RuleSet::builtin(plat.dirs()).unwrap();
@@ -134,7 +134,7 @@ mod tests {
         let days = |name: &str| {
             s.findings
                 .iter()
-                .find(|f| f.path.ends_with(format!("{name}/target")))
+                .find(|f| f.path.ends_with(format!("{name}/build")))
                 .unwrap()
                 .stale_days
                 .unwrap()

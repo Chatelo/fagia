@@ -206,7 +206,10 @@ impl<'a> Gate<'a> {
                 f.note.as_deref().unwrap_or("reclaim with its own tool")
             ));
         }
-        self.path_refusal(&f.path, mode == Mode::Trash, in_use)
+        if let Some(why) = self.path_refusal(&f.path, mode == Mode::Trash, in_use) {
+            return Some(why);
+        }
+        self.rules.report_only_refusal(&f.rule_id)
     }
 
     /// The path checks every destructive action shares: containment,
@@ -222,6 +225,9 @@ impl<'a> Gate<'a> {
             Err(why) => return Some(why),
         };
         if let Some(why) = protection(&path, &self.anchors, &self.protected) {
+            return Some(why);
+        }
+        if let Some(why) = self.rules.installed_refusal(&path) {
             return Some(why);
         }
         if trashing && self.in_trash(&path) {

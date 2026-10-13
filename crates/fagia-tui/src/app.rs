@@ -18,7 +18,6 @@ use fagia_core::model::{EntryKind, Finding};
 use fagia_core::ram::group::Group;
 use fagia_core::ram::{self, MemCache, ReportOptions, Sampler};
 use fagia_core::report::MemReport;
-use fagia_core::rules::Rule;
 use fagia_core::session::{ScanFlags, Session};
 use fagia_core::store::Snapshot;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -1000,15 +999,7 @@ impl DiskView {
             count: scan.tree.children(0).count(),
             regenerable: false,
         });
-        // Preselect what the CLI preselects: regenerable, low risk.
-        let selected = findings
-            .iter()
-            .enumerate()
-            .filter(|(_, f)| {
-                Rule::auto_select(f.regenerable, f.risk) && f.kind != EntryKind::Provider
-            })
-            .map(|(i, _)| i)
-            .collect();
+        let selected = HashSet::new();
         Self {
             scan,
             findings,
