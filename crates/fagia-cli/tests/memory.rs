@@ -15,6 +15,13 @@ fn state(pid: u32) -> char {
         .unwrap_or('?')
 }
 
+fn systemd_service(pid: u32) -> Option<String> {
+    fagia_core::platform::current()
+        .process(pid)?
+        .cgroup_leaf
+        .filter(|unit| unit.ends_with(".service"))
+}
+
 #[test]
 fn mem_json_has_system_and_groups() {
     let env = Env::new();
@@ -53,7 +60,25 @@ fn mem_dev_filters_to_dev_suspects() {
 fn kill_by_pid_quits_politely() {
     let env = Env::new();
     let mut child = Command::new("sleep").arg("300").spawn().unwrap();
-    let pid = child.id().to_string();
+    let child_pid = child.id();
+    if let Some(unit) = systemd_service(child_pid) {
+        let out = env
+            .cmd()
+            .args(["kill", &child_pid.to_string(), "-y"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(&format!("systemd service {unit}")),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert!(matches!(state(child_pid), 'S' | 'R'));
+        let _ = child.kill();
+        let _ = child.wait();
+        return;
+    }
+    let pid = child_pid.to_string();
     let v = env.json(&["kill", &pid, "-y"]);
     assert_eq!(v["action"], "quit");
     assert!(v["still_running"].as_array().unwrap().is_empty());
@@ -69,6 +94,27 @@ fn pause_and_resume_by_pid() {
     let env = Env::new();
     let mut child = Command::new("sleep").arg("300").spawn().unwrap();
     let pid = child.id();
+    if let Some(unit) = systemd_service(pid) {
+        let out = env
+            .cmd()
+            .args(["pause", &pid.to_string(), "-y"])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(
+            String::from_utf8_lossy(&out.stderr).contains(&format!("systemd service {unit}")),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_ne!(
+            state(pid),
+            'T',
+            "refused service process must stay untouched"
+        );
+        let _ = child.kill();
+        let _ = child.wait();
+        return;
+    }
     env.cmd()
         .args(["pause", &pid.to_string(), "-y"])
         .assert()
