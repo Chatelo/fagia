@@ -27,7 +27,7 @@ paths = [
   "{home}/anaconda3", "{home}/miniconda3", "{home}/miniforge3",
 ]
 inside_names = [
-  "node_modules", "site-packages", "dist-packages", ".git", "target",
+  "node_modules", "site-packages", "dist-packages", ".git",
   ".venv", "venv", "env", ".gradle", "bin", "sbin", "libexec",
 ]
 
@@ -39,7 +39,6 @@ category = "Rust build"
 kind = "dir"
 names = ["target"]
 require_sibling = ["Cargo.toml"]
-report_only = true
 regenerable = true
 regenerate = "cargo build"
 risk = "low"

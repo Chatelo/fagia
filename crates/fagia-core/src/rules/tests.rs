@@ -191,6 +191,14 @@ fn installed_software_is_never_a_finding() {
     let m = classify(&rs, &store).unwrap();
     assert_eq!(&*m.rule_id, "pnpm-store");
     assert!(m.report_only);
+
+    let installed_project = tmp.path().join(".nvm/versions/node/v24/native-addon");
+    touch(&installed_project.join("Cargo.toml"));
+    fs::create_dir_all(installed_project.join("target")).unwrap();
+    assert!(
+        classify(&rs, &installed_project.join("target")).is_none(),
+        "a Rust target inside an installed toolchain must stay protected"
+    );
 }
 
 /// Files named like junk that belong to a program: a database journal
@@ -333,7 +341,7 @@ fn scan_collapses_suspects_and_skips_decoys() {
     .unwrap();
     let mut ids: Vec<_> = s.findings.iter().map(|f| f.rule_id.to_string()).collect();
     ids.sort();
-    assert!(ids.is_empty(), "report-only findings leaked: {ids:?}");
+    assert_eq!(ids, ["rust-target"]);
     let target = s
         .tree
         .find(&root.canonicalize().unwrap().join("api/target"))
@@ -350,6 +358,17 @@ fn scan_collapses_suspects_and_skips_decoys() {
         .unwrap();
     assert_eq!(s.tree.children(node_modules).count(), 0);
     assert!(s.tree.node(node_modules).real >= 1 << 20);
+    assert!(
+        s.findings.iter().all(|f| !f.path.ends_with("node_modules")),
+        "node_modules appeared as a cleanable finding"
+    );
+    let target_finding = s
+        .findings
+        .iter()
+        .find(|f| f.path.ends_with("api/target"))
+        .unwrap();
+    assert_eq!(&*target_finding.rule_id, "rust-target");
+    assert_eq!(target_finding.real, s.tree.node(target).real);
     assert!(
         s.tree
             .find(&root.canonicalize().unwrap().join("decoy/target"))

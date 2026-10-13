@@ -103,10 +103,15 @@ fn renders_while_scanning_then_shows_categories() {
     assert!(first.contains("Disk") && first.contains("RAM") && first.contains("History"));
     wait_ready(&mut a);
     let s = screen(&a);
-    for want in ["Test caches", "Media", "Big folders", "0 B selected"] {
+    for want in [
+        "Rust build",
+        "Test caches",
+        "Media",
+        "Big folders",
+        "0 B selected",
+    ] {
         assert!(s.contains(want), "missing {want:?} in\n{s}");
     }
-    assert!(!s.contains("Rust build"));
     assert!(!s.contains("Node deps"));
     let DiskState::Ready(v) = &a.disk else {
         panic!("scan did not finish");
@@ -115,8 +120,12 @@ fn renders_while_scanning_then_shows_categories() {
     assert!(
         v.findings
             .iter()
-            .all(|f| { !f.path.ends_with("target") && !f.path.ends_with("node_modules") }),
-        "dependency/build trees leaked into cleanable findings"
+            .any(|f| f.path.ends_with("target") && f.rule_id.as_ref() == "rust-target"),
+        "project Rust target missing from cleanable findings"
+    );
+    assert!(
+        v.findings.iter().all(|f| !f.path.ends_with("node_modules")),
+        "dependency tree leaked into cleanable findings"
     );
 }
 
@@ -139,7 +148,7 @@ fn clean_goes_through_confirmation_and_gate() {
         .next()
         .map(|&i| v.findings[i].path.clone())
         .unwrap();
-    assert!(selected_path.ends_with(".pytest_cache"));
+    assert!(selected_path.ends_with("target"));
     key(&mut a, KeyCode::Char('c'));
     // Planning runs on a worker; the UI shows progress meanwhile.
     assert!(matches!(a.modal, Some(Modal::Busy { .. })));
@@ -160,7 +169,7 @@ fn clean_goes_through_confirmation_and_gate() {
         matches!(a.modal, Some(Modal::Info(..)))
     });
     assert!(!selected_path.exists());
-    assert!(fx.home.join("code/api/target").exists());
+    assert!(!fx.home.join("code/api/target").exists());
     assert!(fx.home.join("code/web/node_modules").exists());
     let log = fs::read_to_string(fx.home.join(".local/state/fagia/actions.jsonl")).unwrap();
     assert_eq!(log.lines().count(), 1);
@@ -192,8 +201,9 @@ fn report_only_trees_remain_visible_in_big_folders() {
     let mut a = app(&fx);
     wait_ready(&mut a);
 
-    // The last category is the read-only folder browser.
-    for _ in 0..2 {
+    // The last category is the folder browser.
+    let category_count = a.disk_view().unwrap().cats.len();
+    for _ in 0..category_count.saturating_sub(1) {
         key(&mut a, KeyCode::Down);
     }
     key(&mut a, KeyCode::Right);
@@ -227,7 +237,7 @@ fn report_only_trees_remain_visible_in_big_folders() {
             )
         });
     assert_eq!(target.size, 2 << 20);
-    assert!(target.finding.is_none());
+    assert!(target.finding.is_some());
 
     key(&mut a, KeyCode::Backspace);
     let web_idx = a

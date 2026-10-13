@@ -20,7 +20,7 @@
 
 ## ✨ Highlights
 
-- 🔍 **Finds real junk.** Cleanable suspects have evidence; dependency trees, virtual environments, and package caches are sized in the largest-folders view instead.
+- 🔍 **Finds real junk.** Cleanable suspects have evidence; Rust `target/` build output is listed, while dependency trees, virtual environments, and package caches are sized in the largest-folders view instead.
 - 🧹 **Cleans safely.** Dry run first, then the trash; `fagia undo` puts it back. Nothing outside the scanned folder, nothing git tracks, nothing in use.
 - 🪞 **Finds every kind of duplicate.** Identical files and whole folders (removable, keeping your best copy), plus look-alike photos, one song in two formats and edited versions of a document with `--similar`.
 - 🧠 **Shows RAM honestly.** Apps ranked by fair share, forgotten dev servers, leak detection, safe quit/pause.
@@ -55,9 +55,9 @@ Run `fagia --help` for every command and flag.
 
 Every delete goes through one gate that re-checks each item right before acting: path, evidence, size, git state and open files. Permanent deletes and emptying the trash need a typed confirmation, and every action is logged to `~/.local/state/fagia/actions.jsonl`.
 
-fagia cleans evidenced project junk, never installed programs or dependency trees. Report-only paths still contribute to folder sizes but never appear as cleanable suspects:
+fagia cleans evidenced project build output, never installed programs or dependency trees. Report-only paths still contribute to folder sizes but never appear as cleanable suspects:
 
-- **Disk:** home toolchains and app-data folders, dependency/build trees (`target`, `node_modules`, virtual environments), and package caches are report-only. The gate refuses them even if selected by hand. Other protected paths include system folders (`/usr`, `/bin`, `/etc`, `/opt`, ...), XDG data/config/cache dirs, SDK roots, and anything below `site-packages`, `bin` or `.git`. See `[installed]` and `report_only` in `rules/builtin.toml`.
+- **Disk:** home toolchains and app-data folders, dependency trees (`node_modules`, virtual environments), and package caches are report-only. Project-local build output such as Rust `target/` is a cleanable suspect when its project marker is present. The gate refuses report-only paths even if selected by hand. Other protected paths include system folders (`/usr`, `/bin`, `/etc`, `/opt`, ...), XDG data/config/cache dirs, SDK roots, and anything below `site-packages`, `bin` or `.git`. See `[installed]` and `report_only` in `rules/builtin.toml`.
 - **RAM:** system processes, desktop services (settings daemons, input methods, keyring, portals) and anything systemd runs as a service are never signalled; `fagia kill` names the `systemctl` command instead.
 
 ## ⚙️ Configuration

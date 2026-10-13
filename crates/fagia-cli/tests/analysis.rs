@@ -32,7 +32,7 @@ fn suspects_groups_categories_and_skips_decoys() {
         .iter()
         .map(|c| c["category"].as_str().unwrap())
         .collect();
-    assert_eq!(cats, ["Logs"]);
+    assert_eq!(cats, ["Rust build", "Logs"]);
     let home = env.home();
     let paths: Vec<String> = v["findings"]
         .as_array()
@@ -44,7 +44,7 @@ fn suspects_groups_categories_and_skips_decoys() {
     assert!(
         paths
             .iter()
-            .all(|p| !p.contains("target") && !p.contains("node_modules") && !p.contains(".venv")),
+            .all(|p| !p.contains("node_modules") && !p.contains(".venv")),
         "report-only paths leaked into suspects: {paths:?}"
     );
     let largest = env.json(&["top", "code", "--depth", "2", "--min-size", "0"]);
@@ -55,7 +55,11 @@ fn suspects_groups_categories_and_skips_decoys() {
             .iter()
             .find(|e| rel(&home, e["path"].as_str().unwrap()).ends_with(suffix))
             .unwrap_or_else(|| panic!("{suffix} missing from largest folders"));
-        assert!(entry.get("category").is_none(), "{suffix} became a suspect");
+        if suffix.ends_with("/target") {
+            assert_eq!(entry["category"], "Rust build");
+        } else {
+            assert!(entry.get("category").is_none(), "{suffix} became a suspect");
+        }
         assert!(entry["real"].as_u64().unwrap() > 0);
     }
 }
@@ -209,7 +213,7 @@ fn rules_list_test_and_validate() {
             .as_array()
             .unwrap()
             .iter()
-            .any(|r| r["id"] == "rust-target" && r["report_only"] == true)
+            .any(|r| r["id"] == "rust-target" && r["report_only"] == false)
     );
     let v = env.json(&["rules", "test", "code/decoy/target"]);
     assert!(v["winner"].is_null());

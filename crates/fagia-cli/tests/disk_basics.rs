@@ -73,10 +73,7 @@ fn summary_shows_suspects_not_decoys() {
         .map(|f| rel(&home, f["path"].as_str().unwrap()))
         .collect();
     paths.sort();
-    assert!(
-        paths.is_empty(),
-        "report-only paths became suspects: {paths:?}"
-    );
+    assert_eq!(paths, ["/code/api/target"]);
     assert!(v["disk"]["stats"]["total"].as_u64().unwrap() > 0);
 }
 

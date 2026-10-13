@@ -53,9 +53,9 @@ fn yes_trashes_preselected_then_undo_restores() {
         .assert()
         .success()
         .stdout(predicate::str::contains("Dry run"))
-        .stdout(predicate::str::contains("Trashed 2 of 2"));
+        .stdout(predicate::str::contains("Trashed 3 of 3"));
     let h = env.home();
-    assert!(h.join("code/api/target").exists());
+    assert!(!h.join("code/api/target").exists());
     assert!(h.join("code/web/node_modules").exists());
     assert!(
         h.join("code/py/.venv").exists(),
@@ -63,8 +63,9 @@ fn yes_trashes_preselected_then_undo_restores() {
     );
     assert!(h.join(".local/share/Trash/files/.pytest_cache").exists());
     assert!(h.join(".local/share/Trash/files/__pycache__").exists());
+    assert!(h.join(".local/share/Trash/files/target/debug/app").exists());
     let log = fs::read_to_string(h.join(".local/state/fagia/actions.jsonl")).unwrap();
-    assert_eq!(log.lines().count(), 2);
+    assert_eq!(log.lines().count(), 3);
 
     env.cmd()
         .args(["undo", "--list"])
@@ -103,7 +104,7 @@ fn json_clean_reports_result() {
     );
     let v: serde_json::Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(v["command"], "clean");
-    assert_eq!(v["result"]["results"].as_array().unwrap().len(), 2);
+    assert_eq!(v["result"]["results"].as_array().unwrap().len(), 3);
     assert_eq!(v["result"]["mode"], "trash");
     env.cmd().args(["clean", "code", "--json"]).assert().code(1);
 }
